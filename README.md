@@ -1,9 +1,11 @@
 # Racket Scaffold templated content generator
 
-This package extends the standard Racket `raco` command with the ability
-to generate templated common content. While it can be used to replace the 
-`raco pkg new` command, it can also be used to add content to existing 
-packages.
+This package primarily adds a new command to `raco` to generate source
+content. The tool, *scaffold*, has a set of pre-defined complex templates
+known as *planks*. Planks can be as simple as a snippet of useful reusable
+code, or as complex as a complete package structure (akin to the existing
+`raco pkg new` command).
+
 
 ## Examples
 

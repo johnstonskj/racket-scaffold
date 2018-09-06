@@ -1,4 +1,4 @@
-#lang racket
+#lang racket/base
 ;;
 ;; Scaffolding templated Racket files.
 ;;
@@ -8,6 +8,8 @@
 ;;
 ;; ~ Simon Johnston 2018.
 ;;
+
+(require racket/contract)
 
 (provide
  (contract-out

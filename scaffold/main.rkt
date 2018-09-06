@@ -83,6 +83,7 @@
     ["collection" (expand-collection fixed-args)]
     ["module" (expand-module fixed-args)]
     ["testmodule" (expand-test-module fixed-args)]
+    ["scribble" (expand-scribblings fixed-args)]
     ["plank"
      (if (hash-ref fixed-args "list-planks" #f)
          (list-planks)
@@ -228,6 +229,27 @@
                        (run-verbose #t)]
                #:args (test-module-name)
                (expand-content test-module-name)]
+
+ ["scribble" "create basic scribble documentation."
+               "\nCreate a basic scribble layout for documentation."
+               #:once-each
+               [("-d" "--description") value "Short description"
+                                       (set-argument "content-description" value)]
+               #:once-any
+               [("-u" "--user") user "User name"
+                                (set-argument "user-id" user)]
+               [("-U" "--github-user") user "Github user name"
+                                       (set-argument "user-id" user)]
+               #:once-any
+               [("-e" "--email") email "User email"
+                                 (set-argument "user-email" email)]
+               [("-E" "--github-email") email "Github email"
+                                        (set-argument "user-email" email)]
+               #:once-each
+               [("-v") "Verbose mode"
+                       (run-verbose #t)]
+               #:args (module-name)
+               (expand-content module-name)]
 
  ["plank" "expand a short code snippet."
            "\nFind a snippet, expand variables, and display to standard-out."

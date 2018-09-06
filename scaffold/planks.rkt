@@ -5,27 +5,37 @@
 ;; ~ Simon Johnston 2018.
 ;;
 
+(require racket/contract)
+
 (provide
+ (contract-out
 
- readme-types
+  [readme-types (hash/c string? string?)]
+   
+  [license-types (listof string?)]
 
- license-types
-
- package-types
- 
- expand-package
-
- expand-collection
- 
- expand-module
- 
- expand-test-module
- 
- expand-scribblings
-
- expand-a-plank
-
- list-planks)
+  [package-types (listof string?)]
+  
+  [expand-package
+   (-> hash? void?)]
+  
+  [expand-collection
+   (-> hash? void?)]
+  
+  [expand-module
+   (-> hash? void?)]
+  
+  [expand-test-module
+   (-> hash? void?)]
+  
+  [expand-scribblings
+   (-> hash? void?)]
+  
+  [expand-a-plank
+   (-> hash? void?)]
+  
+  [list-planks
+   (-> void?)]))
 
 ;; ---------- Requirements
 
@@ -130,12 +140,13 @@
 (define (expand-test-module arguments)
   (expand-plank-file "test-module.rkt"
                      arguments
-                     "tests"))
+                     "test"))
 
 (define (expand-scribblings arguments)
-  (expand-plank-file "scribble-top.scrbl"
-                     (hash-set arguments "file-name" "scribblings.scrbl")
-                     "scribblings")
+  (unless (file-exists? "scribblings/scribblings.scrbl")
+    (expand-plank-file "scribble-top.scrbl"
+                       (hash-set arguments "file-name" "scribblings.scrbl")
+                       "scribblings"))
   (expand-plank-file "scribble-module.scrbl"
                      (hash-set arguments
                                "file-name"
