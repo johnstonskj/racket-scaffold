@@ -1,0 +1,4 @@
+(test-case
+  "dummy-function: check for exception"
+  (check-exn exn:fail:contract?
+    (λ () (dummy-function))))

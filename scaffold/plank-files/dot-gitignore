@@ -1,0 +1,6 @@
+*.rkt~
+*.rkt#*
+.#*.rkt
+compiled/
+/{{content-name}}/doc/
+/coverage/
