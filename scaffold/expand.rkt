@@ -34,61 +34,67 @@
 
 (define (blank-missing-value-handler name) "")
 
-(define (expand-file source target values [missing-value-handler blank-missing-value-handler])
+(define (expand-file source target replacements [missing-value-handler blank-missing-value-handler])
   (call-with-input-file* source
     (λ (in)
       (let ([str (port->string in)])
         (call-with-output-file* target
                                 (λ (out) (display
-                                          (expand-string str values missing-value-handler)
+                                          (expand-string str replacements missing-value-handler)
                                           out)))))))
 
-(define (expand-string str values [missing-value-handler blank-missing-value-handler])
-  (define matches (regexp-match-positions* simple str))
+(define (expand-string str replacements [missing-value-handler blank-missing-value-handler])
+  (define matches (regexp-match-positions* moustache str #:match-select values))
   (if (or (false? matches) (empty? matches))
       str
       (let ([out (open-output-string)])
         (let next-match ([last 0]
-                         [pos (first matches)]
+                         [pos-list (first matches)]
                          [more (rest matches)])
-          (let ([value (substring-tag str pos)])
-            (display (substring str last (car pos)) out)
+          (let ([prefix (substring str (car (second pos-list)) (cdr (second pos-list)))]
+                [value (substring-tag str (third pos-list))])
+            (display (substring str last (car (first pos-list))) out)
             (display (cond
-                       [(string-prefix? value "!")
+                       [(equal? prefix "!")
                         ""]
                        [(string-between? value "{" "}")
-                        (escape-string (ref values
+                        (escape-string (ref replacements
                                             (substring-between value 1)
                                             missing-value-handler))]
-                       [(string-prefix? value "&")
-                        (escape-string (ref values
-                                            (string-trim (substring value 1))
+                       [(equal? prefix "&")
+                        (escape-string (ref replacements
+                                            value
                                             missing-value-handler))]
                        [(string-prefix? value ".")
                         (error "unsupported: relative paths")]
-                       [(string-prefix-in? value '("#" "^" "/"))
+                       [(string-in? prefix '("#" "^" "/"))
                         (error "unsupported: conditional block expressions")]
-                       [(string-prefix? value ">")
+                       [(equal? prefix ">")
                         (error "unsupported: partial block expressions")]
                        [(string-between? value "=" "=")
                         (error "unsupported: setting delimiters")]
-                       [else (ref values
+                       [else (ref replacements
                                   value
                                   missing-value-handler)])
                      out)
             (if (empty? more)
-                (display (substring str (cdr pos)) out)
-                (next-match (cdr pos) (first more) (rest more)))
+                (display (substring str (cdr (first pos-list))) out)
+                (next-match (cdr (third pos-list)) (first more) (rest more)))
             (get-output-string out))))))
 
 ;; ---------- Internal procedures
 
-(define simple (regexp "\\{\\{\\{?[^}]*\\}\\}\\}?"))
+;; The following is a pretty complete match for Moustache/Handlebars
+(define moustache
+  (regexp "\\{\\{([\\#\\^/!>&]?)(\\{\\s*[^}]*\\s*\\}|\\s*[^}]*\\s*|=\\S+\\s+\\S+=)\\}\\}"))
+;; group 0 - the overall match
+;; group 1 - any prefix characters
+;; group 2 - the embedded tag
 
 (define (substring-tag str position-pair)
   (string-trim (substring str
-                          (+ (car position-pair) 2)
-                          (- (cdr position-pair) 2))))
+                          (car position-pair)
+                          (cdr position-pair))))
 
 (define (substring-between str characters)
   (string-trim (substring str
@@ -99,12 +105,12 @@
   (and (string-prefix? str prefix)
        (string-suffix? str suffix)))
 
-(define (string-prefix-in? str prefixes)
-  (for/or ([prefix prefixes]) (string-prefix? str prefix)))
+(define (string-in? str strings)
+  (for/or ([string strings]) (equal? str string)))
 
-(define (ref top-values key missing-value-handler)
-  (let nested ([values top-values] [names (string-split key ".")])
-    (define value (hash-ref values (first names) (missing-value-handler key)))
+(define (ref top-replacements key missing-value-handler)
+  (let nested ([replacements top-replacements] [names (string-split key ".")])
+    (define value (hash-ref replacements (first names) (missing-value-handler key)))
     (cond
       [(and (> (length names) 1) (hash? value))
        (nested value (rest names))]
