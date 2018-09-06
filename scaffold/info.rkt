@@ -6,7 +6,7 @@
 ;;
 
 (define collection "scaffold")
-(define scribblings '(("scribblings/scaffold.scrbl" ())))
+(define scribblings '(("scribblings/scaffold.scrbl" (multi-page))))
 
 (define raco-commands
   '(("scaffold" scaffold/main "create content from scaffold planks" 85)))

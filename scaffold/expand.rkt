@@ -10,12 +10,16 @@
 ;;
 
 (provide
- 
- expand-file
+ (contract-out
 
- expand-string
+  [expand-file
+   (->* (path-string? path-string? hash?) ((-> string? string?)) void?)]
 
- blank-missing-value-handler)
+  [expand-string
+   (->* (string? hash?) ((-> string? string?)) string?)]
+
+  [blank-missing-value-handler
+   (-> string? string?)]))
 
 ;; ---------- Requirements
 
