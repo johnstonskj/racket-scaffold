@@ -28,6 +28,7 @@
 (require racket/bool
          racket/format
          racket/list
+         racket/logging
          racket/port
          racket/string)
 
@@ -36,6 +37,7 @@
 (define (blank-missing-value-handler name) "")
 
 (define (expand-file source target context [missing-value-handler blank-missing-value-handler])
+  (log-debug "expand ~a ==> ~a" source target)
   (call-with-input-file* source
     (λ (in)
       (let ([str (port->string in)])

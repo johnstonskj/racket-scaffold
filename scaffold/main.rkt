@@ -9,6 +9,7 @@
 
 (require racket/cmdline
          racket/date
+         racket/logging
          racket/match
          racket/port
          racket/string
@@ -22,8 +23,6 @@
          scaffold/system)
 
 ;; ---------- Internal parameters
-
-(define run-verbose (make-parameter #f))
 
 (define argument-hash
   (make-hash (list (cons "content-name" "")
@@ -70,33 +69,38 @@
     (error "not a valid readme type")))
 
 (define (expand-content name)
-  (validate-arguments)
-  (define content-type (current-svn-style-command))
-  (set-argument "content-type" content-type)
-  (unless (equal? (current-svn-style-command) "package")
-    (set-argument "parent-package-name" (or (find-package-name) "")))
-  (set-argument "content-name" name)
-  (vdisplayln (format "expanding ~a ~a" content-type name))
-  (define fixed-args (make-immutable-hash (hash->list argument-hash)))
-  (match content-type
-    ["package" (expand-package fixed-args)]
-    ["collection" (expand-collection fixed-args)]
-    ["module" (expand-module fixed-args)]
-    ["testmodule" (expand-test-module fixed-args)]
-    ["scribble" (expand-scribblings fixed-args)]
-    ["plank"
-     (if (hash-ref fixed-args "list-planks" #f)
-         (list-planks)
-         (for ([plank-file name])
-           (expand-a-plank (hash-set fixed-args "content-name" plank-file))))]
-    [else (error "unexpected content type")]))
+  (with-logging-to-port
+      (current-output-port)
+    (λ ()
+      (log-debug "expand-content: log level set to ~a" (tool-log-level))
+      (validate-arguments)
+      (define content-type (current-svn-style-command))
+      (set-argument "content-type" content-type)
+      (unless (equal? (current-svn-style-command) "package")
+        (set-argument "parent-package-name" (or (find-package-name) "")))
+      (set-argument "content-name" name)
+      (log-info "expand-content: expecting to expand ~a ~a" content-type name)
+      (define fixed-args (make-immutable-hash (hash->list argument-hash)))
+      (match content-type
+        ["package" (expand-package fixed-args)]
+        ["collection" (expand-collection fixed-args)]
+        ["module" (expand-module fixed-args)]
+        ["testmodule" (expand-test-module fixed-args)]
+        ["scribble" (expand-scribblings fixed-args)]
+        ["plank"
+         (if (hash-ref fixed-args "list-planks" #f)
+             (for-each displayln (list-planks))
+             (for ([plank-file name])
+               (expand-a-plank (hash-set fixed-args "content-name" plank-file))))]
+        [else (error "unexpected content type")]))
+    (tool-log-level)))
 
 ;; ---------- Internal procedures
 
-(define (vdisplayln str)
-  (when (run-verbose) (display ": ") (displayln str)))
+(define tool-log-level (make-parameter 'warning))
 
 (define (find-package-name)
+  (log-info "find-package-name: looking for a directory that holds a package...")
   (define go-back (current-directory))
   (define current-path (reverse (map path->string (explode-path go-back))))
   (define package-name (for/or ([dir-name current-path])
@@ -104,12 +108,12 @@
                              (let* ([info (get-info/full (current-directory))])
                                (if (and info (info 'pkg-desc (λ () #f)))
                                    (begin
-                                     (vdisplayln
-                                      (format "Found info.rkt for package in dir ~a" dir-name))
+                                     (log-info "find-package-name: found info.rkt for package in dir ~a" dir-name)
                                      dir-name)
                                    (begin (current-directory "..") #f)))
                              (begin (current-directory "..") #f))))
   (current-directory go-back)
+  (log-info "find-package-name: found package named ~a" package-name)
   package-name)
 
 (svn-style-command-line
@@ -156,8 +160,10 @@
             [("-E" "--github-email") email "Github email"
                                      (set-argument "user-email" email)]
             #:once-each
-            [("-v") "Verbose mode"
-                    (run-verbose #t)]
+            [("-v" "--verbose") "Verbose mode"
+                                (tool-log-level 'info)]
+            [("--very-verbose") "Very verbose mode"
+                                (tool-log-level 'debug)]
             #:args (package-name)
             (expand-content package-name)]
      
@@ -179,8 +185,10 @@
                [("-E" "--github-email") email "Github email"
                                         (set-argument "user-email" email)]
                #:once-each
-               [("-v") "Verbose mode"
-                       (run-verbose #t)]
+               [("-v" "--verbose") "Verbose mode"
+                                   (tool-log-level 'info)]
+               [("--very-verbose") "Very verbose mode"
+                                   (tool-log-level 'debug)]
                #:args (collection-name)
                (expand-content collection-name)]
      
@@ -202,8 +210,10 @@
            [("-E" "--github-email") email "Github email"
                                     (set-argument "user-email" email)]
            #:once-each
-           [("-v") "Verbose mode"
-                   (run-verbose #t)]
+           [("-v" "--verbose") "Verbose mode"
+                   (tool-log-level 'info)]
+           [("--very-verbose") "Very verbose mode"
+                   (tool-log-level 'debug)]
            #:args (module-name)
            (expand-content module-name)]
      
@@ -225,8 +235,10 @@
                [("-E" "--github-email") email "Github email"
                                         (set-argument "user-email" email)]
                #:once-each
-               [("-v") "Verbose mode"
-                       (run-verbose #t)]
+               [("-v" "--verbose") "Verbose mode"
+                                   (tool-log-level 'info)]
+               [("--very-verbose") "Very verbose mode"
+                                   (tool-log-level 'debug)]
                #:args (test-module-name)
                (expand-content test-module-name)]
 
@@ -246,8 +258,10 @@
                [("-E" "--github-email") email "Github email"
                                         (set-argument "user-email" email)]
                #:once-each
-               [("-v") "Verbose mode"
-                       (run-verbose #t)]
+               [("-v" "--verbose") "Verbose mode"
+                                   (tool-log-level 'info)]
+               [("--very-verbose") "Very verbose mode"
+                                   (tool-log-level 'debug)]
                #:args (module-name)
                (expand-content module-name)]
 
@@ -256,6 +270,10 @@
            #:once-each
            [("-l" "--list") "List all known planks."
                             (set-argument "list-planks" #t)]
+           [("-v" "--verbose") "Verbose mode"
+                   (tool-log-level 'info)]
+           [("--very-verbose") "Very verbose mode"
+                   (tool-log-level 'debug)]
            #:args plank-name
            (expand-content plank-name)]
 

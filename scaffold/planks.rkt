@@ -35,11 +35,12 @@
    (-> hash? void?)]
   
   [list-planks
-   (-> void?)]))
+   (-> (listof string?))]))
 
 ;; ---------- Requirements
 
 (require racket/function
+         racket/logging
          racket/match
          racket/port
          racket/string
@@ -56,8 +57,8 @@
 ;; ---------- Implementation
 
 (define (expand-package arguments)
-  (vdisplayln 'expand-package (format "package name ~a" (hash-ref arguments "content-name")))
-  (vdisplayln 'expand-package (format "package dir ~a" (hash-ref arguments "package-dir")))
+  (log-info "expand-package: package name ~a" (hash-ref arguments "content-name"))
+  (log-info "expand-package: package dir ~a" (hash-ref arguments "package-dir"))
   (define package-name (hash-ref arguments "content-name"))
   (let ([package-dir (hash-ref arguments "package-dir")])
     (if (non-empty-string? package-dir)
@@ -68,7 +69,7 @@
                                           (hash-ref readme-types
                                                     (hash-ref arguments "package-readme"))))]
           [heading-underline (make-string (string-length (hash-ref arguments "content-name")) #\=)])
-      (vdisplayln 'expand-package (format "readme file ~a" file-name))
+      (log-info "readme file ~a" file-name)
       (expand-plank-file file-name
                          (hash-set* arguments
                                     "file-name" file-name
@@ -105,6 +106,7 @@
   )
 
 (define (expand-info type arguments)
+  (log-debug "expand-info")
   (expand-plank-file (format "info-~a.rkt" type)
                      (hash-set* arguments
                                 "file-name"
@@ -115,6 +117,7 @@
                                     "()"))))
 
 (define (expand-collection arguments [type 'all])
+  (log-debug "expand-collection")
   (define collection (hash-ref arguments "content-name"))
   (define collection-file (format "~a.rkt" collection))
   (if (directory-exists? collection)
@@ -133,16 +136,19 @@
           (expand-scribblings arguments)))))
 
 (define (expand-module arguments)
+  (log-debug "expand-module")
   (expand-plank-file "module.rkt" arguments)
   (expand-test-module arguments)
   (expand-scribblings arguments))
 
 (define (expand-test-module arguments)
+  (log-debug "expand-test-module")
   (expand-plank-file "test-module.rkt"
                      arguments
                      "test"))
 
 (define (expand-scribblings arguments)
+  (log-debug "expand-scribblings")
   (unless (file-exists? "scribblings/scribblings.scrbl")
     (expand-plank-file "scribble-top.scrbl"
                        (hash-set arguments "file-name" "scribblings.scrbl")
@@ -155,34 +161,36 @@
 
 (define (expand-a-plank arguments)
   (define file-name (find-plank-file (hash-ref arguments "content-name")))
+  (log-debug "expand-a-plank: ~s" file-name)
   (if file-name
       (call-with-input-file* file-name
         (λ (in)
           (displayln (expand-string (port->string in) arguments blank-missing-value-handler))))
-      (displayln (format "No content found for '~a'" (hash-ref arguments "content-name")))))
+      (log-warning "No content found for '~a'" (hash-ref arguments "content-name"))))
 
 (define (list-planks)
-  (for-each displayln (map
-                       (λ (f) (string-replace (path->string f) #rx"\\.plank$" ""))
-                       (append
-                        (list-planks-in (collection-file-path "plank-files/" "scaffold"))
-                        (list-planks-in (expand-user-path "~/planks"))))))
+  (define package-path (collection-file-path "plank-files/" "scaffold"))
+  (define local-path (expand-user-path "~/planks"))
+  (log-info "list-planks: package dir: ~a" (path->string package-path))
+  (log-info "list-planks: local dir: ~a" (path->string local-path))
+  (map
+   (λ (f) (string-replace (path->string f) #rx"\\.plank$" ""))
+   (append
+    (list-planks-in package-path)
+    (list-planks-in local-path))))
 
 ;; ---------- Internal procedures
 
-(define (vdisplayln who str)
-  (displayln (format "! ~a: ~a" (symbol->string who) str)))
-
 (define (expand-plank-file file-name arguments [output-dir "."])
-  (vdisplayln 'expand-plank-file (format "plank ~a" file-name))
-  (vdisplayln 'expand-plank-file (format "output-dir ~a -> ~a" (current-directory) output-dir))
+  (log-info "expand-plank-file: plank ~a" file-name)
+  (log-info "expand-plank-file: output-dir ~a -> ~a" (current-directory) output-dir)
   (unless (directory-exists? output-dir)
     (make-directory output-dir))
   (define output-file (format "~a/~a"
                               output-dir
                               (or (hash-ref arguments "file-name" #f)
                                   (hash-ref arguments "content-name"))))
-  (vdisplayln 'expand-plank-file (format "output-file ~a" output-file))
+  (log-info "expand-plank-file: output-file ~a" output-file)
   (if (file-exists? output-file)
       (error (format "cannot overwrite existing file ~a" output-file))
       (expand-file (plank-file-path file-name)
@@ -196,8 +204,6 @@
         plank-path
         (let* ([local-file-name (format "~~/planks/~a" file-name)]
                [plank-path (expand-user-path local-file-name)])
-          (displayln local-file-name)
-          (displayln plank-path)
           (if (file-exists? plank-path)
               plank-path
               #f)))))
