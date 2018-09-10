@@ -26,6 +26,7 @@
 ;; ---------- Requirements
 
 (require racket/bool
+         racket/format
          racket/list
          racket/port
          racket/string)
@@ -34,53 +35,21 @@
 
 (define (blank-missing-value-handler name) "")
 
-(define (expand-file source target replacements [missing-value-handler blank-missing-value-handler])
+(define (expand-file source target context [missing-value-handler blank-missing-value-handler])
   (call-with-input-file* source
     (λ (in)
       (let ([str (port->string in)])
         (call-with-output-file* target
                                 (λ (out) (display
-                                          (expand-string str replacements missing-value-handler)
+                                          (expand-string str context missing-value-handler)
                                           out)))))))
 
-(define (expand-string str replacements [missing-value-handler blank-missing-value-handler])
+(define (expand-string str context [missing-value-handler blank-missing-value-handler])
   (define matches (regexp-match-positions* moustache str #:match-select values))
   (if (or (false? matches) (empty? matches))
       str
       (let ([out (open-output-string)])
-        (let next-match ([last 0]
-                         [pos-list (first matches)]
-                         [more (rest matches)])
-          (let ([prefix (substring str (car (second pos-list)) (cdr (second pos-list)))]
-                [value (substring-tag str (third pos-list))])
-            (display (substring str last (car (first pos-list))) out)
-            (display (cond
-                       [(equal? prefix "!")
-                        ""]
-                       [(string-between? value "{" "}")
-                        (escape-string (ref replacements
-                                            (substring-between value 1)
-                                            missing-value-handler))]
-                       [(equal? prefix "&")
-                        (escape-string (ref replacements
-                                            value
-                                            missing-value-handler))]
-                       [(string-prefix? value ".")
-                        (error "unsupported: relative paths")]
-                       [(string-in? prefix '("#" "^" "/"))
-                        (error "unsupported: conditional block expressions")]
-                       [(equal? prefix ">")
-                        (error "unsupported: partial block expressions")]
-                       [(string-between? value "=" "=")
-                        (error "unsupported: setting delimiters")]
-                       [else (ref replacements
-                                  value
-                                  missing-value-handler)])
-                     out)
-            (if (empty? more)
-                (display (substring str (cdr (first pos-list))) out)
-                (next-match (cdr (third pos-list)) (first more) (rest more)))
-            (get-output-string out))))))
+        (expand-matches str 0 (string-length str) matches out context missing-value-handler))))
 
 ;; ---------- Internal procedures
 
@@ -91,10 +60,87 @@
 ;; group 1 - any prefix characters
 ;; group 2 - the embedded tag
 
+
+(define (expand-matches str start end matches out context missing-value-handler)
+  (if (or (false? matches) (empty? matches))
+      str
+      (let next-match ([last start]
+                       [pos-list (first matches)]
+                       [more (rest matches)]
+                       [skip-to #f])
+        (cond
+          [(and skip-to (equal? skip-to pos-list))
+           (set! skip-to #f)]
+          [(not skip-to)
+           (let-values ([(prefix value) (prefix-and-value str pos-list)])
+             (display (substring str last (t-start (first pos-list))) out)
+             (display (cond
+                        [(equal? prefix "!")
+                         ""]
+                        [(string-between? value "{" "}")
+                         (escape-string (ref context
+                                             (substring-between value 1)
+                                             missing-value-handler))]
+                        [(equal? prefix "&")
+                         (escape-string (ref context
+                                             value
+                                             missing-value-handler))]
+                        [(string-in? prefix '("#" "^"))
+                         (let ([end (for/or ([end-list more])
+                                      (let-values ([(e-prefix e-value)
+                                                    (prefix-and-value str end-list)])
+                                        (if (and (equal? e-prefix "/")
+                                                 (equal? e-value value))
+                                            (member end-list more)
+                                            #f)))])
+                           (cond
+                             [(equal? end #f)
+                              (error "no end tag for block")]
+                             [(let ([content (ref context value blank-missing-value-handler)])
+                                (or (and (equal? prefix "#") content)
+                                    (and (equal? prefix "^") (not content))))
+                              (let ([new-context (ref context value blank-missing-value-handler)]
+                                    [sub-matches (take more (index-of more (first end)))])
+                                (when (list? new-context)
+                                  (for ([item new-context])
+                                    (expand-matches str
+                                                    (t-end (first pos-list))
+                                                    (t-start (first (first end)))
+                                                    sub-matches
+                                                    out
+                                                    item
+                                                    missing-value-handler))))])
+                           (set! skip-to end))
+                         ""]
+                        [(equal? prefix "/")
+                         (error "unexpected conditional end")]
+                        [(equal? prefix ">")
+                         (error "unsupported: partial block expressions")]
+                        [(string-prefix? value ".")
+                         (error "unsupported: relative paths")]
+                        [(string-between? value "=" "=")
+                         (error "unsupported: setting delimiters")]
+                        [else (ref context
+                                   value
+                                   missing-value-handler)])
+                      out))])
+        (if (empty? more)
+            (display (substring str (t-end (first pos-list)) end) out)
+            (next-match (t-end (third pos-list)) (first more) (rest more) skip-to))
+        (get-output-string out))))
+
+(define (t-start pair) (car pair))
+
+(define (t-end pair) (cdr pair))
+
+(define (prefix-and-value str a-match)
+  (values (substring str (t-start (second a-match)) (t-end (second a-match)))
+          (substring-tag str (third a-match))))
+
 (define (substring-tag str position-pair)
   (string-trim (substring str
-                          (car position-pair)
-                          (cdr position-pair))))
+                          (t-start position-pair)
+                          (t-end position-pair))))
 
 (define (substring-between str characters)
   (string-trim (substring str
@@ -108,9 +154,9 @@
 (define (string-in? str strings)
   (for/or ([string strings]) (equal? str string)))
 
-(define (ref top-replacements key missing-value-handler)
-  (let nested ([replacements top-replacements] [names (string-split key ".")])
-    (define value (hash-ref replacements (first names) (missing-value-handler key)))
+(define (ref top-context key missing-value-handler)
+  (let nested ([context top-context] [names (string-split key ".")])
+    (define value (hash-ref context (first names) (missing-value-handler key)))
     (cond
       [(and (> (length names) 1) (hash? value))
        (nested value (rest names))]
@@ -118,7 +164,7 @@
        (if (= (procedure-arity value) 1)
            (value (first names))
            (value))]
-      [(and (= (length names) 1) (string? value))
+      [(and (= (length names) 1))
        value]
       [else (missing-value-handler key)])))
 
@@ -133,4 +179,4 @@
     (define pair (first replace))
     (if (empty? (rest replace))
         in-str
-        (next (string-replace in-str (car pair) (cdr pair)) (rest replace)))))
+        (next (string-replace in-str (t-start pair) (t-end pair)) (rest replace)))))

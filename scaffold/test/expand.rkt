@@ -17,7 +17,7 @@
 
 (define (myname v) "steve")
 
-;; ---------- Test Cases
+;; ---------- Test Cases - Success
 
 (test-case
  "expand-string: success"
@@ -68,14 +68,18 @@
    "hello oops :)"))
 
 (test-case
- "expand-string: unsupported relative path"
-  (check-exn
-   exn:fail?
-   (λ ()
-     (expand-string "hello {{../name}} :)" (hash "name" "simon")))))
+ "expand-string: success with # conditional"
+ (define c (hash "items" (list (hash "item" "one")
+                               (hash "item" "two")
+                               (hash "item" "three"))))
+ (check-equal?
+  (expand-string "a list: {{#items}} {{item}}, {{/items}}and that's all" c)
+  "a list:  one,  two,  three, and that's all"))
+
+;; ---------- Test Cases - Errors
 
 (test-case
- "expand-string: unsupported conditional blocks"
+ "expand-string: unbalanced conditionals"
   (check-exn
    exn:fail?
    (λ ()
@@ -88,6 +92,15 @@
    exn:fail?
    (λ ()
      (expand-string "hello {{/unsupported}} :)" (hash "name" "simon")))))
+
+;; ---------- Test Cases - Unsupported
+
+(test-case
+ "expand-string: unsupported relative path"
+  (check-exn
+   exn:fail?
+   (λ ()
+     (expand-string "hello {{../name}} :)" (hash "name" "simon")))))
 
 (test-case
  "expand-string: unsupported partials"
