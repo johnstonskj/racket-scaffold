@@ -7,6 +7,8 @@
 
 ;; Racket Style Guide: http://docs.racket-lang.org/style/index.html
 
+(require racket/contract)
+
 (provide
  (contract-out))
 

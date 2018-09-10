@@ -65,13 +65,13 @@
 
 (define (expand-matches str start end matches out context missing-value-handler)
   (if (or (false? matches) (empty? matches))
-      str
+      (display (substring str start end) out)
       (let next-match ([last start]
                        [pos-list (first matches)]
                        [more (rest matches)]
                        [skip-to #f])
         (cond
-          [(and skip-to (equal? skip-to pos-list))
+          [(and skip-to (equal? (first skip-to) pos-list))
            (set! skip-to #f)]
           [(not skip-to)
            (let-values ([(prefix value) (prefix-and-value str pos-list)])
@@ -97,21 +97,30 @@
                                             #f)))])
                            (cond
                              [(equal? end #f)
-                              (error "no end tag for block")]
+                              (error (format "no end tag for block ~a" value))]
                              [(let ([content (ref context value blank-missing-value-handler)])
                                 (or (and (equal? prefix "#") content)
                                     (and (equal? prefix "^") (not content))))
                               (let ([new-context (ref context value blank-missing-value-handler)]
                                     [sub-matches (take more (index-of more (first end)))])
-                                (when (list? new-context)
-                                  (for ([item new-context])
-                                    (expand-matches str
-                                                    (t-end (first pos-list))
-                                                    (t-start (first (first end)))
-                                                    sub-matches
-                                                    out
-                                                    item
-                                                    missing-value-handler))))])
+                                (cond
+                                  [(list? new-context)
+                                   (for ([item new-context])
+                                     (expand-matches str
+                                                     (t-end (first pos-list))
+                                                     (t-start (first (first end)))
+                                                     sub-matches
+                                                     out
+                                                     item
+                                                     missing-value-handler))]
+                                  [else
+                                   (expand-matches str
+                                                   (t-end (first pos-list))
+                                                   (t-start (first (first end)))
+                                                   sub-matches
+                                                   out
+                                                   (if (hash? new-context) new-context context)
+                                                   missing-value-handler)]))])
                            (set! skip-to end))
                          ""]
                         [(equal? prefix "/")
@@ -125,10 +134,11 @@
                         [else (ref context
                                    value
                                    missing-value-handler)])
-                      out))])
+                      out))]
+          [else (log-debug "skipping over ~a" (substring str last (t-end (first pos-list))))])
         (if (empty? more)
             (display (substring str (t-end (first pos-list)) end) out)
-            (next-match (t-end (third pos-list)) (first more) (rest more) skip-to))
+            (next-match (t-end (first pos-list)) (first more) (rest more) skip-to))
         (get-output-string out))))
 
 (define (t-start pair) (car pair))

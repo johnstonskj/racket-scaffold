@@ -8,7 +8,6 @@
 ;; ---------- Requirements
 
 (require racket/cmdline
-         racket/date
          racket/list
          racket/logging
          racket/match
@@ -21,31 +20,11 @@
          planet/private/command
          ; Here is the internal API
          scaffold/planks
-         scaffold/system)
+         )
 
 ;; ---------- Internal parameters
 
-(define argument-hash
-  (make-hash (list (cons "content-name" "")
-                   (cons "content-description" "")
-                   (cons "module-language" "racket/base")
-                   (cons "package-dir" "")
-                   (cons "package-version" "0.1")
-                   (cons "package-license" "MIT")
-                   (cons "package-readme" "markdown")
-                   (cons "package-include-private" #t)
-                   (cons "package-include-travis" #t)
-                   (cons "package-structure" "multi")
-                   (cons "scribble-structure" "multi")
-                   (cons "user-id"
-                         (find-user-id))
-                   (cons "user-name"
-                         (find-user-name))
-                   (cons "user-email"
-                         (system-value "git config --global user.email"))
-                   (cons "user-keys" (make-hash))
-                   (cons "year"
-                         (number->string (date-year (current-date)))))))
+(define argument-hash (plank-argument-defaults))
 
 (define (set-argument name value)
   (hash-set! argument-hash name value))
@@ -53,7 +32,7 @@
 (define (add-argument key-value)
   (define kv-list (string-split key-value "="))
   (when (= (length kv-list) 2)
-    (hash-set! (hash-ref argument-hash "user-keys") (first kv-list) (second kv-list))))
+    (hash-set! (hash-ref argument-hash "user-args") (first kv-list) (second kv-list))))
 
 ;; ---------- Implementation
 
@@ -69,11 +48,11 @@
 
 (define (validate-arguments)
   (unless (member (string-downcase (hash-ref argument-hash "package-license"))
-                  '("apache" "gplv3" "mit"))
-    (error "not a valid license type"))
+                  (map string-downcase license-types))
+    (error (format "~a is not a valid license type" (hash-ref argument-hash "package-license"))))
   (unless (member (string-downcase (hash-ref argument-hash "package-readme"))
-                  '("markdown" "text"))
-    (error "not a valid readme type")))
+                  (map string-downcase (hash-keys readme-types)))
+    (error (format "~a is not a valid readme type" (hash-ref argument-hash "package-readme")))))
 
 (define (expand-content name)
   (with-logging-to-port
@@ -91,7 +70,8 @@
       (log-info "expand-content: expecting to expand ~a ~a" content-type name)
       (define fixed-args (make-immutable-hash (hash->list argument-hash)))
       (match content-type
-        ["package" (expand-package fixed-args)]
+        ["package" (expand-package (hash-set fixed-args
+                                             "parent-package-name" name))]
         ["collection" (expand-collection fixed-args)]
         ["module" (expand-module fixed-args)]
         ["testmodule" (expand-test-module fixed-args)]
@@ -162,7 +142,7 @@
                                      (set-argument "package-structure" "single")]
             #:once-each
             [("--single-scribble") "Create a single-page Scribble doc"
-                                   (set-argument "scribble-structure" "single")]
+                                   (set-argument "scribble-structure" "'()")]
             #:once-any
             [("-u" "--user") user "User name"
                              (set-argument "user-id" user)]

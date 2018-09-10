@@ -35,16 +35,21 @@
    (-> hash? void?)]
   
   [list-planks
-   (-> (listof string?))]))
+   (-> (listof string?))]
+  
+  [plank-argument-defaults
+   (-> hash?)]))
 
 ;; ---------- Requirements
 
-(require racket/function
+(require racket/date
+         racket/function
          racket/logging
          racket/match
          racket/port
          racket/string
-         scaffold/expand)
+         scaffold/expand
+         scaffold/system)
 
 ;; ---------- Internal Configuration
 
@@ -102,8 +107,7 @@
                                       "content-name"
                                       (format "~a-test" (hash-ref arguments "content-name")))))]
       
-      [else (error "invalid package structure")]))
-  )
+      [else (error "invalid package structure")])))
 
 (define (expand-info type arguments)
   (log-debug "expand-info")
@@ -133,6 +137,9 @@
                                (hash-set arguments "file-name" collection-file)
                                "private"))
           (expand-test-module arguments)
+          (expand-plank-file "test-doc-complete.rkt"
+                             (hash-set arguments "file-name" "test-doc-complete.rkt")
+                             "test")
           (expand-scribblings arguments)))))
 
 (define (expand-module arguments)
@@ -144,19 +151,16 @@
 (define (expand-test-module arguments)
   (log-debug "expand-test-module")
   (expand-plank-file "test-module.rkt"
-                     arguments
+                     (hash-set arguments "file-ext" "rkt")
                      "test"))
 
 (define (expand-scribblings arguments)
   (log-debug "expand-scribblings")
-  (unless (file-exists? "scribblings/scribblings.scrbl")
-    (expand-plank-file "scribble-top.scrbl"
-                       (hash-set arguments "file-name" "scribblings.scrbl")
-                       "scribblings"))
+  (expand-plank-file "scribble-top.scrbl"
+                     (hash-set arguments "file-name" "scribblings.scrbl")
+                     "scribblings")
   (expand-plank-file "scribble-module.scrbl"
-                     (hash-set arguments
-                               "file-name"
-                               (format "~a.scrbl" (hash-ref arguments "content-name")))
+                     (hash-set arguments "file-ext" "scrbl")
                      "scribblings"))
 
 (define (expand-a-plank arguments)
@@ -179,7 +183,38 @@
     (list-planks-in package-path)
     (list-planks-in local-path))))
 
+(define (plank-argument-defaults)
+  (make-hash (list (cons "content-name" "")
+                   (cons "content-description" "")
+                   (cons "module-language" "racket/base")
+                   (cons "package-dir" "")
+                   (cons "package-version" "0.1")
+                   (cons "package-license" "MIT")
+                   (cons "package-readme" "markdown")
+                   (cons "package-include-private" #t)
+                   (cons "package-include-travis" #t)
+                   (cons "package-structure" "multi")
+                   (cons "scribble-structure" "multi-page")
+                   (cons "user-id"
+                         (find-user-id))
+                   (cons "user-name"
+                         (find-user-name))
+                   (cons "user-email"
+                         (system-value "git config --global user.email"))
+                   (cons "user-args" (make-hash))
+                   (cons "year"
+                         (number->string (date-year (current-date)))))))
+
 ;; ---------- Internal procedures
+
+(define (output-file-name arguments)
+  (or (hash-ref arguments "file-name" #f)
+      (if (hash-ref arguments "file-ext")
+          (format "~a.~a"
+                  (hash-ref arguments "content-name")
+                  (hash-ref arguments "file-ext"))
+           #f)
+      (hash-ref arguments "content-name")))
 
 (define (expand-plank-file file-name arguments [output-dir "."])
   (log-info "expand-plank-file: plank ~a" file-name)
@@ -188,11 +223,10 @@
     (make-directory output-dir))
   (define output-file (format "~a/~a"
                               output-dir
-                              (or (hash-ref arguments "file-name" #f)
-                                  (hash-ref arguments "content-name"))))
+                              (output-file-name arguments)))
   (log-info "expand-plank-file: output-file ~a" output-file)
   (if (file-exists? output-file)
-      (error (format "cannot overwrite existing file ~a" output-file))
+      (log-error "cannot overwrite existing file ~a" output-file)
       (expand-file (plank-file-path file-name)
                    output-file
                    arguments)))

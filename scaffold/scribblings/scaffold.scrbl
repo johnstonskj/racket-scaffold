@@ -98,7 +98,7 @@ Invoking the @tt{package} sub-command, as shown in the command-line below,
 
 @verbatim[#:indent 2]|{
 $ raco scaffold package -d "Some new package" -V "1.0" -l MIT -r markdown \
-         -L "racket/base" -u "me" -e "me@example.com"
+         -L "racket/base" -u "me" -e "me@example.com" my-name
 }|
 
 results in the @bold{Multi-Collection Package}  package structure shown
@@ -235,6 +235,9 @@ scribblings/
 
 @;{============================================================================}
 @subsection[]{Command-Line Flags}
+
+The following summarizes all of the command-line flags and the sub-commands
+that make use of them.
 
 @tabular[#:style 'boxed
          #:sep @hspace[1]
@@ -418,8 +421,10 @@ The following table lists the arguments passed into the functions in
                      @smaller{--single-collection, --triple-collection})
                (list @smaller{package-version} @racket[string?] @smaller{0.1}
                      @smaller{-V})
-               (list @smaller{scribble-structure} @smaller{"", multi} @smaller{multi}
+               (list @smaller{scribble-structure} @smaller{"'()", multi-page} @smaller{multi-page}
                      @smaller{--single-scribble})
+               (list @smaller{user-args} @smaller{key=value} ""
+                     @smaller{-k})
                (list @smaller{user-email} @racket[string?] ""
                      @smaller{-e, -E})
                (list @smaller{user-id} @racket[string?] "" "")

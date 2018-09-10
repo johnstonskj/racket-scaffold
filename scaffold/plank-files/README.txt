@@ -44,9 +44,9 @@ Links
 
 GitHub
   https://github.com/{{user-id}}/{{content-name}}/releases
-
+{{#package-include-travis}}
 Travis
-  https://www.travis-ci.org/{{user-id}}/{{content-name}}
+  https://www.travis-ci.org/{{user-id}}/{{content-name}}{{/package-include-travis}}
 
 Racket Package
   http://pkgs.racket-lang.org/package/{{content-name}}

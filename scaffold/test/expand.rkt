@@ -68,17 +68,48 @@
    "hello oops :)"))
 
 (test-case
- "expand-string: success with # conditional"
+ "expand-string: success with # conditional, list of hashes"
  (define c (hash "items" (list (hash "item" "one")
                                (hash "item" "two")
                                (hash "item" "three"))))
  (check-equal?
   (expand-string "a list: {{#items}} {{item}}, {{/items}}and that's all" c)
-  "a list:  one,  two,  three, and that's all")
+  "a list:  one,  two,  three, and that's all"))
+
+(test-case
+ "expand-string: success with # conditional list of symbols"
  (check-equal?
   (expand-string "a list: {{#items}} {{_}}, {{/items}}and that's all"
                  (hash "items" '(a b c)))
   "a list:  a,  b,  c, and that's all"))
+
+(test-case
+ "expand-string: success with # conditional hash with hash"
+ (check-equal?
+  (expand-string "a hash: {{#item}}{{name}}{{/item}} and that's all"
+                 (hash "item" (hash "name" "simon")))
+  "a hash: simon and that's all"))
+
+(test-case
+ "expand-string: success with # conditional hash only"
+ (check-equal?
+  (expand-string "a hash: {{#item}}{{name}}{{/item}} and that's all"
+                 (hash "item" "yes" "name" "simon"))
+  "a hash: simon and that's all"))
+
+(test-case
+ "expand-string: success with # conditional hash only, no pattern"
+ (check-equal?
+  (expand-string "a hash: {{#item}}OK then{{/item}} and that's all"
+                 (hash "item" "yes"))
+  "a hash: OK then and that's all"))
+
+(test-case
+ "expand-string: success with # conditional hash only, trailing pattern"
+ (check-equal?
+  (expand-string "a hash: {{#item}}OK{{/item}} so that's a {{item}}{{^item}}no{{/item}}."
+                 (hash "item" "yes"))
+  "a hash: OK so that's a yes."))
 
 ;; ---------- Test Cases - Errors
 
