@@ -74,7 +74,11 @@
                                (hash "item" "three"))))
  (check-equal?
   (expand-string "a list: {{#items}} {{item}}, {{/items}}and that's all" c)
-  "a list:  one,  two,  three, and that's all"))
+  "a list:  one,  two,  three, and that's all")
+ (check-equal?
+  (expand-string "a list: {{#items}} {{_}}, {{/items}}and that's all"
+                 (hash "items" '(a b c)))
+  "a list:  a,  b,  c, and that's all"))
 
 ;; ---------- Test Cases - Errors
 

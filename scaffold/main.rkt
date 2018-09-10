@@ -9,6 +9,7 @@
 
 (require racket/cmdline
          racket/date
+         racket/list
          racket/logging
          racket/match
          racket/port
@@ -42,11 +43,17 @@
                          (find-user-name))
                    (cons "user-email"
                          (system-value "git config --global user.email"))
+                   (cons "user-keys" (make-hash))
                    (cons "year"
                          (number->string (date-year (current-date)))))))
 
 (define (set-argument name value)
   (hash-set! argument-hash name value))
+
+(define (add-argument key-value)
+  (define kv-list (string-split key-value "="))
+  (when (= (length kv-list) 2)
+    (hash-set! (hash-ref argument-hash "user-keys") (first kv-list) (second kv-list))))
 
 ;; ---------- Implementation
 
@@ -72,6 +79,8 @@
   (with-logging-to-port
       (current-output-port)
     (λ ()
+      (when (log-level? (current-logger) 'debug)
+        (show-config))
       (log-debug "expand-content: log level set to ~a" (tool-log-level))
       (validate-arguments)
       (define content-type (current-svn-style-command))
@@ -88,11 +97,14 @@
         ["testmodule" (expand-test-module fixed-args)]
         ["scribble" (expand-scribblings fixed-args)]
         ["plank"
-         (if (hash-ref fixed-args "list-planks" #f)
-             (for-each displayln (list-planks))
-             (for ([plank-file name])
-               (expand-a-plank (hash-set fixed-args "content-name" plank-file))))]
-        [else (error "unexpected content type")]))
+         (cond
+           [(hash-ref fixed-args "list-planks" #f)
+            (for-each displayln (list-planks))]
+           [(> (length name) 0)
+            (for ([plank-file name])
+              (expand-a-plank (hash-set fixed-args "content-name" plank-file)))]
+           [else (log-warning "no plank names specified, nothing to do.")])]
+        [else (log-error "unexpected content type ~a" content-type)]))
     (tool-log-level)))
 
 ;; ---------- Internal procedures
@@ -108,7 +120,9 @@
                              (let* ([info (get-info/full (current-directory))])
                                (if (and info (info 'pkg-desc (λ () #f)))
                                    (begin
-                                     (log-info "find-package-name: found info.rkt for package in dir ~a" dir-name)
+                                     (log-info
+                                      "find-package-name: found info.rkt for package in dir ~a"
+                                      dir-name)
                                      dir-name)
                                    (begin (current-directory "..") #f)))
                              (begin (current-directory "..") #f))))
@@ -172,6 +186,8 @@
                #:once-each
                [("-d" "--description") value "Short description"
                                        (set-argument "content-description" value)]
+               [("--no-private") "Do not generate a private source folder"
+                                 (set-argument "package-include-private" #f)]
                [("-L" "--language") value "The Racket language name to be used for new modules"
                                     (set-argument "module-language" value)]
                #:once-any
@@ -270,6 +286,10 @@
            #:once-each
            [("-l" "--list") "List all known planks."
                             (set-argument "list-planks" #t)]
+           #:multi
+           [("-k" "--key=value") key-value "Add a user-defined key/value argument"
+                                 (add-argument key-value)]
+           #:once-each
            [("-v" "--verbose") "Verbose mode"
                    (tool-log-level 'info)]
            [("--very-verbose") "Very verbose mode"

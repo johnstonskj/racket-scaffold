@@ -22,6 +22,14 @@
 ;; add example here
 ```
 
+
+## Installation
+
+* To install (from within the package directory): `raco pkg install`
+* To install (once uploaded to pkgs.racket-lang.org): `raco pkg install {{content-name}}`
+* To uninstall: `raco pkg remove {{content-name}}`
+* To view documentation: `raco docs {{content-name}}`
+
 ## History
 
 * **{{package-version}}** - Initial Version

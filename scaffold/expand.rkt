@@ -157,18 +157,22 @@
   (for/or ([string strings]) (equal? str string)))
 
 (define (ref top-context key missing-value-handler)
-  (let nested ([context top-context] [names (string-split key ".")])
-    (define value (hash-ref context (first names) (missing-value-handler key)))
-    (cond
-      [(and (> (length names) 1) (hash? value))
-       (nested value (rest names))]
-      [(and (= (length names) 1) (procedure? value))
-       (if (= (procedure-arity value) 1)
-           (value (first names))
-           (value))]
-      [(and (= (length names) 1))
-       value]
-      [else (missing-value-handler key)])))
+  (cond
+    [(equal? key "_")
+     (~a top-context)]
+    [else
+     (let nested ([context top-context] [names (string-split key ".")])
+       (define value (hash-ref context (first names) (missing-value-handler key)))
+       (cond
+         [(and (> (length names) 1) (hash? value))
+          (nested value (rest names))]
+         [(and (= (length names) 1) (procedure? value))
+          (if (= (procedure-arity value) 1)
+              (value (first names))
+              (value))]
+         [(= (length names) 1)
+          value]
+         [else (missing-value-handler key)]))]))
 
 (define html-escapes '(("&" . "&amp;")
                        ("<" . "&lt;")

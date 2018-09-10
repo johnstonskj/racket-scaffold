@@ -5,6 +5,8 @@
 ;;
 ;; Copyright (c) {{year}} {{user-name}} ({{user-email}}).
 
+;; Racket Style Guide: http://docs.racket-lang.org/style/index.html
+
 (provide
  (contract-out))
 
@@ -21,6 +23,10 @@
 ;; ---------- Internal tests
 
 (module+ test
-  (require rackunit rackunit/docs-complete)
-  ; only use for internal tests, use check- functions 
+  (require rackunit)
+  ;; only use for internal tests, use check- functions 
   (check-true "dummy first test" #f))
+
+(module+ main
+  ;; Main entry point, executed when run with the `racket` executable or DrRacket.
+  )
