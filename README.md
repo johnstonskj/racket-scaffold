@@ -6,7 +6,7 @@
 [![raco pkg install racket-scaffold](https://img.shields.io/badge/raco%20pkg%20install-racket--scaffold-blue.svg)](http://pkgs.racket-lang.org/package/racket-scaffold)
 [![Documentation](https://img.shields.io/badge/raco%20docs-racket--scaffold-blue.svg)](http://docs.racket-lang.org/racket-scaffold/index.html)
 [![GitHub stars](https://img.shields.io/github/stars/johnstonskj/racket-scaffold.svg)](https://github.com/johnstonskj/racket-scaffold/stargazers)
-![{{package-license}} License](https://img.shields.io/badge/license-{{package-license}}-118811.svg)
+![MIT License](https://img.shields.io/badge/license-MIT-118811.svg)
 
 This package primarily adds a new command to `raco` to generate source
 content. The tool, *scaffold*, has a set of pre-defined complex templates
