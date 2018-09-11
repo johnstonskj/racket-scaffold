@@ -33,6 +33,34 @@ For help on a particular subcommand, use 'raco scaffold <subcommand> --help'
   raco scaffold config        show default configuration values.
 ```
 
+Running the following command line will create a complete package.
+
+```bash
+$ raco scaffold package -d "Some new package" -V "1.0" -l MIT -r markdown \
+         -L "racket/base" -u "me" -e "me@example.com" my-name
+```
+
+The generated package has the following structure:
+
+```
+my-name/
+|-- README.md 
+|-- LICENSE
+|-- .travis.yml
+|-- Makefile
+|-- info.rkt
+'-- my-name/
+    |-- info.rkt
+    |-- main.rkt
+    |-- private/
+    |   '-- my-name.rkt
+    |-- test/
+    |   '-- my-name.rkt
+    '-- scribblings/
+        '-- scribblings.scrbl
+        '-- my-name.scrbl
+```
+
 ## History
 
 * **1.0** - Initial Version
