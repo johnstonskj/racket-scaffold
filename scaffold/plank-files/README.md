@@ -34,4 +34,4 @@
 
 * **{{package-version}}** - Initial Version
 
-[![Racket Language](https://racket-lang.org/logo-and-text-1-2.png)](https://racket-lang.org/)
+[![Racket Language](https://raw.githubusercontent.com/johnstonskj/racket-playground/master/racket-lang.png)](https://racket-lang.org/)
