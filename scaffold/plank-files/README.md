@@ -26,7 +26,7 @@
 ## Installation
 
 * To install (from within the package directory): `raco pkg install`
-* To install (once uploaded to pkgs.racket-lang.org): `raco pkg install {{package-name}}`
+* To install (once uploaded to [pkgs.racket-lang.org](https://pkgs.racket-lang.org/)): `raco pkg install {{package-name}}`
 * To uninstall: `raco pkg remove {{package-name}}`
 * To view documentation: `raco docs {{package-name}}`
 
@@ -34,4 +34,4 @@
 
 * **{{package-version}}** - Initial Version
 
-[![Racket Language](https://raw.githubusercontent.com/johnstonskj/racket-playground/master/racket-lang.png)](https://racket-lang.org/)
+[![Racket Language](https://raw.githubusercontent.com/johnstonskj/racket-scaffold/master/scaffold/plank-files/racket-lang.png)](https://racket-lang.org/)
