@@ -64,14 +64,14 @@
       (validate-arguments)
       (define content-type (current-svn-style-command))
       (set-argument "content-type" content-type)
-      (unless (equal? (current-svn-style-command) "package")
-        (set-argument "parent-package-name" (or (find-package-name) "")))
+      (if (equal? (current-svn-style-command) "package")
+          (set-argument "package-name" name)
+          (set-argument "package-name" (or (find-package-name) "")))
       (set-argument "content-name" name)
       (log-info "expand-content: expecting to expand ~a ~a" content-type name)
       (define fixed-args (make-immutable-hash (hash->list argument-hash)))
       (match content-type
-        ["package" (expand-package (hash-set fixed-args
-                                             "parent-package-name" name))]
+        ["package" (expand-package fixed-args)]
         ["collection" (expand-collection fixed-args)]
         ["module" (expand-module fixed-args)]
         ["testmodule" (expand-test-module fixed-args)]
@@ -135,6 +135,8 @@
                                  (set-argument "module-language" value)]
             [("-o" "--output-dir") value "The alternate directory to create the package in."
                                  (set-argument "package-dir" value)]
+            [("-c" "--collection") value "The alternate name of the collection."
+                                 (set-argument "collection-name" value)]
             #:once-any
             [("--triple-collection") "Create separate lib, doc, test, collections in package"
                                      (set-argument "package-structure" "triple")]

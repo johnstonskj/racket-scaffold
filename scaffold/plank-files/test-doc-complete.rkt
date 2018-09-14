@@ -1,6 +1,6 @@
 #lang racket/base
 ;;
-;; {{parent-package-name}} - Test Documentation Coverage.
+;; {{package-name}} - Test Documentation Coverage.
 ;;
 ;; Copyright (c) {{year}} {{user-name}} ({{user-email}}).
 

@@ -92,6 +92,11 @@ $ raco scaffold plank -k fixture=my-function -k exn=contract test-exn
 @;{============================================================================}
 @subsection[]{Planks}
 
+As mentioned already, a plank is simply some content, either a small snippet of
+code, a file, or a collection of files and directories that make up a templated
+item. A set of pre-defined planks can be created by the tool directly, each of
+which is described in detail below.
+
 @subsubsection[]{Create a Package}
 
 Invoking the @tt{package} sub-command, as shown in the command-line below,
@@ -196,6 +201,10 @@ my-name/
 
 @subsubsection[]{Create a Collection}
 
+A collection is a subset of the first package structure above, it has it's
+own @tt{info.rkt} and @tt{main.rkt} files as well as private, test, and
+documentation folders.
+
 @verbatim[#:indent 2]|{
 my-name/
 |-- info.rkt
@@ -211,6 +220,9 @@ my-name/
 
 @subsubsection[]{Create a Module}
 
+A module is a subset of a collection, it creates a library module, test
+module, and separate scribble file.
+
 @verbatim[#:indent 2]|{
 my-name.rkt
 test/
@@ -221,12 +233,16 @@ scribblings/
 
 @subsubsection[]{Create a Test Module}
 
+Creates a single test module in the @tt{test} directory.
+
 @verbatim[#:indent 2]|{
 test/
 '-- my-name.rkt
 }|
 
 @subsubsection[]{Create a Scribble}
+
+Creates a single scribble file in the @tt{scribblings} directory.
 
 @verbatim[#:indent 2]|{
 scribblings/
@@ -262,12 +278,34 @@ that make use of them.
                (list @tt{} @tt{triple-collection} "Y" "" "" "" "" "")
                (list @tt{} @tt{single-scribble} "Y" "" "" "" "" "")
                (list @tt{V} @tt{version} "Y" "" "" "" "" "")
-               (list @tt{} @tt{key-value} "" "" "" "" "" "Y")
+               (list @tt{k} @tt{key-value} "" "" "" "" "" "Y")
                (list @tt{l} @tt{list} "" "" "" "" "" "Y")
                )]
 
 @;{============================================================================}
 @subsection[]{Adding Your Own Planks}
+
+The @tt{plank} sub-command allows for the expansion of arbitrary content by looking
+for files of the form @tt{@"{{"name@"}}".plank} in the user's @tt{~/planks/}
+directory. The tool actually looks in the package internally first for planks
+distributed internally, and then the local folder. Calling the sub-command with the
+@tt{-l} or @tt{--list} flag will have the tool list all of the matching plank files
+in either location.
+
+Clearly, a user-defined file can reuse any of the template variables used in the
+standard planks (see @secref["Internal_Arguments"
+                             #:doc '(lib "scaffold/scribblings/scaffold.scrbl")])
+or you can define your own and pass values into the template via the @tt{-k} or
+@tt{--key-value} command line flag.
+
+@verbatim[#:indent 2]|{
+$ cat ~/planks/test-exn.plank
+(test-case
+  "{{fixture}}: check for {{exn}} exception"
+  (check-exn exn:fail:{{exn}}?
+    (λ () ({{fixture}}))))
+}|
+
 
 See @secref["Module_scaffold_expand"
          #:doc '(lib "scaffold/scribblings/scaffold.scrbl")] for a full
@@ -276,6 +314,11 @@ description of the supported template syntax.
 @;{============================================================================}
 @;{============================================================================}
 @section[]{Reference}
+
+This section describes the modules that comprise the template engine
+(@racket[scaffold/expand]) and plank configurations (@racket[scaffold/planks]).
+The template engine can be used for any purpose and the plank configurations
+allow for programmatic construction of the planks by other tools.
 
 @;{============================================================================}
 @subsection[]{Module scaffold/expand}
@@ -351,51 +394,90 @@ string for any missing template key.}
 @subsection[]{Module scaffold/planks}
 @defmodule[scaffold/planks]
 
-TBD
+This module provides a layer above the @racket[scaffold/expand] module's generic
+template engine to provide racket-specific structures and necessary error handling
+for code generation. Each function takes an @racket[arguments] parameter that
+not only provides the context for the templates but also any options for the plank
+structure as well.
 
-@examples[ #:eval example-eval
+@racketblock[
 (require scaffold/planks)
-; add more here.
+(expand-module (hash-set (plank-argument-defaults)
+                         "content-name"
+                         "my-module"))
 ]
 
-@defthing[readme-types (hash/c string? string?)]{}
+@defthing[readme-types (hash/c string? string?)]{
+Returns a list of strings that represent the allowed file formats for readme
+files generated in a package; for example @tt{markdown} or @tt{text}.}
    
-@defthing[license-types (hash/c string? string?)]{}
+@defthing[license-types (hash/c string? string?)]{
+Returns a hash of @italic{name-to-file} pairs that map user-friendly input
+names (e.g. @tt{MIT} or @tt{Apache-2.0}, etc.) to the specific file names
+for the license file generated in a package.}
 
-@defthing[package-types (listof string?)]{}
+@defthing[package-types (listof string?)]{
+Returns a list of strings that represent the supported structure types for
+packages (see @racket[expand-package] for details).}
   
 @defproc[(expand-package
           [arguments hash?])
-         void?]{}
+         void?]{
+
+Used by @tt{raco scaffold package}, see @secref["Create_a_Package"
+         #:doc '(lib "scaffold/scribblings/scaffold.scrbl")].
+}
 
 @defproc[(expand-collection
           [arguments hash?])
-         void?]{}
+         void?]{
+Used by @tt{raco scaffold collection}, see @secref["Create_a_Collection"
+         #:doc '(lib "scaffold/scribblings/scaffold.scrbl")].
+}
 
 @defproc[(expand-module
           [arguments hash?])
-         void?]{}
+         void?]{
+Used by @tt{raco scaffold module}, see @secref["Create_a_Module"
+         #:doc '(lib "scaffold/scribblings/scaffold.scrbl")].
+}
 
 @defproc[(expand-test-module
           [arguments hash?])
-         void?]{}
+         void?]{
+Used by @tt{raco scaffold testmodule}, see @secref["Create_a_Test_Module"
+         #:doc '(lib "scaffold/scribblings/scaffold.scrbl")].
+}
   
 @defproc[(expand-scribblings
           [arguments hash?])
-         void?]{}
+         void?]{
+Used by @tt{raco scaffold scribble}, see @secref["Create_a_Scribble"
+         #:doc '(lib "scaffold/scribblings/scaffold.scrbl")].
+}
   
 @defproc[(expand-a-plank
           [arguments hash?])
          void?]{}
   
 @defproc[(list-planks)
-         (listof string?)]{}
+         (listof string?)]{
+This function returns a list of package, and user, provided planks in the form
+of @tt{*.plank} files. This function searches both locations and returns a
+sorted list of all names.}
+
+@defproc[(plank-argument-defaults)
+          hash?]{
+Return a @racket[hash] that 
+}
 
 @subsection[]{Internal Arguments}
 
-The following table lists the arguments passed into the functions in
+The following table lists the arguments passed into the plank functions in
 @secref["Module_scaffold_planks"
-         #:doc '(lib "scaffold/scribblings/scaffold.scrbl")].
+         #:doc '(lib "scaffold/scribblings/scaffold.scrbl")]. A hash with
+default values can be created using the @racket[plank-argument-defaults]
+function.
 
 @tabular[#:style 'boxed
          #:sep @hspace[1]
@@ -415,13 +497,14 @@ The following table lists the arguments passed into the functions in
                      @smaller{--no-travis})
                (list @smaller{package-license} @smaller{Apache-2.0, BSD, GPL-3, LGPL-2.1, MIT}
                      @smaller{MIT} @smaller{-l})
+               (list @smaller{package-name} @racket[string?] "" "")
                (list @smaller{package-readme} @smaller{markdown, text} @smaller{markdown}
                      @smaller{-r})
                (list @smaller{package-structure} @smaller{single, multi, triple} @smaller{multi}
                      @smaller{--single-collection, --triple-collection})
                (list @smaller{package-version} @racket[string?] @smaller{0.1}
                      @smaller{-V})
-               (list @smaller{scribble-structure} @smaller{"'()", multi-page} @smaller{multi-page}
+               (list @smaller{scribble-structure} @smaller{(), multi-page} @smaller{multi-page}
                      @smaller{--single-scribble})
                (list @smaller{user-args} @smaller{key=value} ""
                      @smaller{-k})

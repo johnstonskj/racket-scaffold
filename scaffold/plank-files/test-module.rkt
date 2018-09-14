@@ -1,6 +1,6 @@
 #lang {{module-language}}
 ;;
-;; {{parent-package-name}} - {{content-name}}.
+;; {{package-name}} - {{content-name}}.
 ;;   {{content-description}}
 ;;
 ;; Copyright (c) {{year}} {{user-name}} ({{user-email}}).

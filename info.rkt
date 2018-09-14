@@ -17,6 +17,7 @@
   "racket-index"))
 (define build-deps '(
   "scribble-lib"
+  "scribble-doc"
   "racket-doc"
   "sandbox-lib"
   "cover-coveralls"))

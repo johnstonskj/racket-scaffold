@@ -16,6 +16,7 @@
 ;; ---------- Requirements
 
 (require racket/date
+         racket/logging
          racket/match
          racket/port
          racket/string
@@ -24,10 +25,16 @@
 ;; ---------- Implementation
 
 (define (system-value command)
-  (string-trim
-   (with-output-to-string
-     (lambda ()
-       (system command)))))
+  (define string-error (open-output-string))
+  (define result (parameterize ([current-error-port string-error])
+                   (string-trim
+                    (with-output-to-string
+                      (lambda ()
+                        (system command))))))
+  (when (get-output-string string-error)
+    (log-info "system ~a error: ~a" command (get-output-string string-error)))
+  result)
+  
   
 (define (find-user-id)
   (match (system-type)
