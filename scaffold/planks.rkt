@@ -17,7 +17,7 @@
   [package-types (listof string?)]
   
   [expand-package
-   (-> hash? boolean? void?)]
+   (-> hash? void?)]
   
   [expand-collection
    (-> hash? boolean? void?)]
@@ -106,9 +106,8 @@
 (define (expand-info type arguments)
   (log-info "expand-info: ~a" type)
   (expand-plank-file (format "info-~a.rkt" type)
-                     (hash-set* arguments
-                                "file-name"         "info.rkt"
-                                "scribbling-format" (hash-ref arguments "scribble-structure"))))
+                     (hash-set* arguments "file-name" "info.rkt")))
+
 
 (define (expand-collection arguments [flat #f])
   (define collection (hash-ref arguments "collection-name"))
@@ -118,7 +117,10 @@
     (if flat
         (expand-info "single-package" arguments)
         (expand-info "collection" (hash-set arguments "content-name" collection)))
-    (expand-module (hash-set arguments "content-name" collection) #t))
+    (expand-module (hash-set arguments "content-name" collection) #t)
+    (expand-plank-file "test-doc-complete.rkt"
+                          (hash-set arguments "file-name" "test-doc-complete.rkt")
+                          "test"))
   
   (cond
     [(and (not flat) (directory-exists? collection))
@@ -131,28 +133,25 @@
      (expander)]
     [else (log-error "invalid state in expand-collection")]))     
 
-;       (expand-plank-file "test-doc-complete.rkt"
-;                          (hash-set arguments "file-name" "test-doc-complete.rkt")
-;                          "test")))))
 
-(define (expand-module arguments [collection? #f])
-  (log-info "expand-module (a ~a)" (if collection? "collection" "module"))
-  
+(define (expand-module arguments)
+  (log-info "expand-module")
   (cond
     [(hash-ref arguments "package-include-private")
      (define requires (format " \"private/~a.rkt\"" (hash-ref arguments "content-name")))
      (expand-plank-file "module.rkt" (hash-set arguments "module-requires" requires))
      (expand-plank-file "module.rkt" (hash-set arguments "private-module" #t) "private")]
     [else (expand-plank-file "module.rkt" arguments)])
-  
   (expand-test-module arguments)
   (expand-scribblings arguments))
+
 
 (define (expand-test-module arguments)
   (log-info "expand-test-module")
   (expand-plank-file "test-module.rkt"
                      (hash-set arguments "file-ext" "rkt")
                      "test"))
+
 
 (define (expand-scribblings arguments)
   (log-info "expand-scribblings")
@@ -163,6 +162,7 @@
                      (hash-set arguments "file-ext" "scrbl")
                      "scribblings"))
 
+
 (define (expand-a-plank arguments)
   (define file-name (find-plank-file (hash-ref arguments "content-name")))
   (log-info "expand-a-plank: ~s" file-name)
@@ -171,6 +171,7 @@
         (λ (in)
           (displayln (expand-string (port->string in) arguments blank-missing-value-handler))))
       (log-warning "No content found for '~a'" (hash-ref arguments "content-name"))))
+
 
 (define (list-planks)
   (define package-path (collection-file-path "plank-files/" "scaffold"))
@@ -182,6 +183,7 @@
    (append
     (list-planks-in package-path)
     (list-planks-in local-path))))
+
 
 (define (plank-argument-defaults)
   (make-hash (list (cons "collection-name" "")

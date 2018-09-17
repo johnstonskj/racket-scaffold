@@ -10,7 +10,7 @@
 (define version "{{package-version}}")
 (define pkg-authors '({{user-name}}))
 
-(define scribblings '(("scribblings/{{name}}.scrbl" {{scribbling-format}})))
+(define scribblings '(("scribblings/{{name}}.scrbl" {{scribble-structure}})))
 
 (define deps '(
   "base"
