@@ -129,8 +129,8 @@
       (display (format ", declared in ~a" (export-info-exported-from export)) out))
     (newline out)))
 
-;(introspect-module 'scaffold/planks)
+(display-module (introspect-module 'scaffold/planks))
 
 ;(introspect-module 'rackunit)
 
-(display-module (introspect-module 'rml/data))
+;(display-module (introspect-module 'rml/data))

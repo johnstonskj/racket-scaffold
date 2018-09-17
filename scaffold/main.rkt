@@ -245,6 +245,9 @@
                #:once-each
                [("-d" "--description") value "Short description"
                                        (set-argument "content-description" value)]
+               #:once-each
+               [("-i" "--introspect") value "Module name to document in scribble"
+                                       (set-argument "scribble-this" value)]
                #:once-any
                [("-u" "--user") user "User name"
                                 (set-argument "user-id" user)]

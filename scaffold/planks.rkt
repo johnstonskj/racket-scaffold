@@ -155,9 +155,11 @@
 
 (define (expand-scribblings arguments)
   (log-info "expand-scribblings")
+  ;; use 'scribble-this' to introspect existng module
   (expand-plank-file "scribble-top.scrbl"
                      (hash-set arguments "file-name" "scribblings.scrbl")
-                     "scribblings")
+                     "scribblings"
+                     #t)
   (expand-plank-file "scribble-module.scrbl"
                      (hash-set arguments "file-ext" "scrbl")
                      "scribblings"))
@@ -227,7 +229,7 @@
                #f))
       (hash-ref arguments "content-name")))
 
-(define (expand-plank-file file-name arguments [output-dir "."])
+(define (expand-plank-file file-name arguments [output-dir "."] [ignore-existing #f])
   (log-info "expand-plank-file: plank ~a" file-name)
   (log-debug "expand-plank-file: output-dir ~a -> ~a" (current-directory) output-dir)
   (unless (directory-exists? output-dir)
@@ -237,7 +239,7 @@
                               (output-file-name file-name arguments)))
   (log-info "expand-plank-file: output-file ~a" output-file)
   (if (file-exists? output-file)
-      (log-error "cannot overwrite existing file ~a" output-file)
+      (unless ignore-existing (log-error "cannot overwrite existing file ~a" output-file))
       (expand-file (plank-file-path file-name)
                    output-file
                    arguments)))

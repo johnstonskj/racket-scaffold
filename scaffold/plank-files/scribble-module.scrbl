@@ -11,3 +11,7 @@
 @;{============================================================================}
 
 @;Add your API documentation here...
+
+{{#exports}}
+Document {{name}} - TBD
+{{/exports}}
