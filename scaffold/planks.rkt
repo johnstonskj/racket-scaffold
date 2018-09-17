@@ -17,10 +17,10 @@
   [package-types (listof string?)]
   
   [expand-package
-   (-> hash? void?)]
+   (-> hash? boolean? void?)]
   
   [expand-collection
-   (-> hash? void?)]
+   (-> hash? boolean? void?)]
   
   [expand-module
    (-> hash? void?)]
@@ -46,6 +46,7 @@
          racket/function
          racket/logging
          racket/match
+         racket/path
          racket/port
          racket/string
          scaffold/expand
@@ -62,100 +63,99 @@
 ;; ---------- Implementation
 
 (define (expand-package arguments)
-  (log-info "expand-package: package name ~a" (hash-ref arguments "content-name"))
-  (log-info "expand-package: package dir ~a" (hash-ref arguments "package-dir"))
-  (define package-name (hash-ref arguments "content-name"))
-  (let ([package-dir (hash-ref arguments "package-dir")])
-    (if (non-empty-string? package-dir)
-        (make-directory package-dir)
-        (make-directory package-name)))
-  (parameterize ([current-directory package-name])
-    (let ([file-name (format "README.~a" (string-downcase
-                                          (hash-ref readme-types
-                                                    (hash-ref arguments "package-readme"))))]
-          [heading-underline (make-string (string-length (hash-ref arguments "content-name")) #\=)])
-      (log-info "readme file ~a" file-name)
-      (expand-plank-file file-name
-                         (hash-set* arguments
-                                    "file-name" file-name
-                                    "heading-underline" heading-underline)))
-    (let ([plank-name (format "LICENSE-~a" (hash-ref arguments "package-license"))])
-      (expand-plank-file plank-name
-                       (hash-set arguments "file-name" "LICENSE")))
-    (when (hash-ref arguments "package-include-travis")
-      (expand-plank-file "dot-travis.yml"
-                         (hash-set arguments "file-name" ".travis.yml"))
-      (expand-plank-file "Makefile"
-                         (hash-set arguments "file-name" "Makefile")))
-    (match (hash-ref arguments "package-structure")
-      ["single"
-       (expand-info "single-package" arguments)]
-      ["multi"
-       (begin
-         (expand-info "multi-package" arguments)
-         (expand-collection arguments))]
-      ["triple"
-       (begin
-         (expand-info "multi-package" arguments)
-         (expand-collection (hash-set arguments
-                                      "content-name"
-                                      (format "~a-lib" (hash-ref arguments "content-name"))))
-         (expand-collection (hash-set arguments
-                                      "content-name"
-                                      (format "~a-doc" (hash-ref arguments "content-name"))))
-         (expand-collection (hash-set arguments
-                                      "content-name"
-                                      (format "~a-test" (hash-ref arguments "content-name")))))]
-      
-      [else (error "invalid package structure")])))
-
+  (define form (hash-ref arguments "package-structure"))
+  (define package-name (hash-ref arguments "package-name"))
+  (define package-dir (string-or (hash-ref arguments "package-dir") package-name))
+  (log-info "expand-package: package ~a into ~a" package-name package-dir)
+  
+  (when
+      (cond
+        [(equal? package-dir "")
+         (log-error "package directory not provided")
+         #f]
+        [(directory-exists? package-dir)
+         (log-error "package directory already exists ~a" package-dir)
+         #f]
+        [else
+         (make-directory package-dir)
+         #t])
+    (parameterize ([current-directory package-dir])
+      (expand-plank-file "dot-gitignore"
+                         (hash-set arguments "file-name" ".gitignore"))
+      (let ([file-name (format "README.~a" (string-downcase
+                                            (hash-ref readme-types
+                                                      (hash-ref arguments "package-readme"))))]
+            [heading-underline (make-string (string-length (hash-ref arguments "content-name")) #\=)])
+        (expand-plank-file file-name
+                           (hash-set* arguments
+                                      "file-name" file-name
+                                      "heading-underline" heading-underline)))
+      (let ([plank-name (format "LICENSE-~a" (hash-ref arguments "package-license"))])
+        (expand-plank-file plank-name
+                           (hash-set arguments "file-name" "LICENSE")))
+      (when (hash-ref arguments "package-include-travis")
+        (expand-plank-file "dot-travis.yml"
+                           (hash-set arguments "file-name" ".travis.yml"))
+        (expand-plank-file "Makefile"
+                           (hash-set arguments "file-name" "Makefile")))
+      (define collection-name (string-or (hash-ref arguments "collection-name")
+                                         (hash-ref arguments "content-name")))
+      (expand-collection (hash-set arguments "collection-name" collection-name)
+                         (equal? form "single")))))
+  
 (define (expand-info type arguments)
-  (log-debug "expand-info")
+  (log-info "expand-info: ~a" type)
   (expand-plank-file (format "info-~a.rkt" type)
                      (hash-set* arguments
-                                "file-name"
-                                "info.rkt"
-                                "scribbling-format"
-                                (if (equal? (hash-ref arguments "scribble-structure") "multi")
-                                    "(multi-page)"
-                                    "()"))))
+                                "file-name"         "info.rkt"
+                                "scribbling-format" (hash-ref arguments "scribble-structure"))))
 
-(define (expand-collection arguments [type 'all])
-  (log-debug "expand-collection")
-  (define collection (hash-ref arguments "content-name"))
-  (define collection-file (format "~a.rkt" collection))
-  (if (directory-exists? collection)
-      (error (format "cannot overwrite existing collection ~a" collection))
-      (begin
-        (make-directory collection)
-        (parameterize ([current-directory collection])
-          (expand-info "collection" arguments)
-          (expand-plank-file "module.rkt"
-                             (hash-set arguments "file-name" "main.rkt"))
-          (when (hash-ref arguments "package-include-private")
-            (expand-plank-file "module.rkt"
-                               (hash-set arguments "file-name" collection-file)
-                               "private"))
-          (expand-test-module arguments)
-          (expand-plank-file "test-doc-complete.rkt"
-                             (hash-set arguments "file-name" "test-doc-complete.rkt")
-                             "test")
-          (expand-scribblings arguments)))))
+(define (expand-collection arguments [flat #f])
+  (define collection (hash-ref arguments "collection-name"))
+  (log-info "expand-collection ~a" collection)
+  
+  (define (expander)
+    (if flat
+        (expand-info "single-package" arguments)
+        (expand-info "collection" (hash-set arguments "content-name" collection)))
+    (expand-module (hash-set arguments "content-name" collection) #t))
+  
+  (cond
+    [(and (not flat) (directory-exists? collection))
+      (log-error "cannot overwrite existing collection ~a" collection)]
+    [(not flat)
+     (make-directory collection)
+     (parameterize ([current-directory collection])
+       (expander))]
+    [flat
+     (expander)]
+    [else (log-error "invalid state in expand-collection")]))     
 
-(define (expand-module arguments)
-  (log-debug "expand-module")
-  (expand-plank-file "module.rkt" arguments)
+;       (expand-plank-file "test-doc-complete.rkt"
+;                          (hash-set arguments "file-name" "test-doc-complete.rkt")
+;                          "test")))))
+
+(define (expand-module arguments [collection? #f])
+  (log-info "expand-module (a ~a)" (if collection? "collection" "module"))
+  
+  (cond
+    [(hash-ref arguments "package-include-private")
+     (define requires (format " \"private/~a.rkt\"" (hash-ref arguments "content-name")))
+     (expand-plank-file "module.rkt" (hash-set arguments "module-requires" requires))
+     (expand-plank-file "module.rkt" (hash-set arguments "private-module" #t) "private")]
+    [else (expand-plank-file "module.rkt" arguments)])
+  
   (expand-test-module arguments)
   (expand-scribblings arguments))
 
 (define (expand-test-module arguments)
-  (log-debug "expand-test-module")
+  (log-info "expand-test-module")
   (expand-plank-file "test-module.rkt"
                      (hash-set arguments "file-ext" "rkt")
                      "test"))
 
 (define (expand-scribblings arguments)
-  (log-debug "expand-scribblings")
+  (log-info "expand-scribblings")
   (expand-plank-file "scribble-top.scrbl"
                      (hash-set arguments "file-name" "scribblings.scrbl")
                      "scribblings")
@@ -165,7 +165,7 @@
 
 (define (expand-a-plank arguments)
   (define file-name (find-plank-file (hash-ref arguments "content-name")))
-  (log-debug "expand-a-plank: ~s" file-name)
+  (log-info "expand-a-plank: ~s" file-name)
   (if file-name
       (call-with-input-file* file-name
         (λ (in)
@@ -184,12 +184,14 @@
     (list-planks-in local-path))))
 
 (define (plank-argument-defaults)
-  (make-hash (list (cons "content-name" "")
+  (make-hash (list (cons "collection-name" "")
+                   (cons "content-name" "")
                    (cons "content-description" "")
                    (cons "module-language" "racket/base")
                    (cons "package-dir" "")
                    (cons "package-version" "0.1")
                    (cons "package-license" "MIT")
+                   (cons "package-name" "")
                    (cons "package-readme" "markdown")
                    (cons "package-include-private" #t)
                    (cons "package-include-travis" #t)
@@ -207,23 +209,30 @@
 
 ;; ---------- Internal procedures
 
-(define (output-file-name arguments)
+(define (string-or . strings)
+  (findf non-empty-string? strings))
+
+(define (output-file-name input-file-name arguments)
   (or (hash-ref arguments "file-name" #f)
-      (if (hash-ref arguments "file-ext")
+      (if (hash-ref arguments "file-ext" #f)
           (format "~a.~a"
                   (hash-ref arguments "content-name")
                   (hash-ref arguments "file-ext"))
-           #f)
+           (if (path-get-extension input-file-name)
+               (format "~a~a"
+                       (hash-ref arguments "content-name")
+                       (path-get-extension input-file-name))
+               #f))
       (hash-ref arguments "content-name")))
 
 (define (expand-plank-file file-name arguments [output-dir "."])
   (log-info "expand-plank-file: plank ~a" file-name)
-  (log-info "expand-plank-file: output-dir ~a -> ~a" (current-directory) output-dir)
+  (log-debug "expand-plank-file: output-dir ~a -> ~a" (current-directory) output-dir)
   (unless (directory-exists? output-dir)
     (make-directory output-dir))
   (define output-file (format "~a/~a"
                               output-dir
-                              (output-file-name arguments)))
+                              (output-file-name file-name arguments)))
   (log-info "expand-plank-file: output-file ~a" output-file)
   (if (file-exists? output-file)
       (log-error "cannot overwrite existing file ~a" output-file)

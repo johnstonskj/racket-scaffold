@@ -5,7 +5,7 @@
 ;;
 ;; Copyright (c) {{year}} {{user-name}} ({{user-email}}).
 
-(define collection "{{content-name}}")
+(define collection "{{collection-name}}")
 (define pkg-desc "{{content-description}}")
 (define version "{{package-version}}")
 (define pkg-authors '({{user-name}}))

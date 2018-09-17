@@ -100,7 +100,7 @@
                               (error (format "no end tag for block ~a" value))]
                              [(let ([content (ref context value blank-missing-value-handler)])
                                 (or (and (equal? prefix "#") content)
-                                    (and (equal? prefix "^") (not content))))
+                                    (and (equal? prefix "^") (missing-or-empty content))))
                               (let ([new-context (ref context value blank-missing-value-handler)]
                                     [sub-matches (take more (index-of more (first end)))])
                                 (cond
@@ -165,6 +165,14 @@
 
 (define (string-in? str strings)
   (for/or ([string strings]) (equal? str string)))
+
+(define (missing-or-empty value)
+  (cond
+    [(boolean? value)
+     (not value)]
+    [(string? value)
+     (not (non-empty-string? value))]
+    [else #f]))
 
 (define (ref top-context key missing-value-handler)
   (cond
