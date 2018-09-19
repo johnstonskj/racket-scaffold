@@ -240,7 +240,6 @@
                 (cond
                   [(list? partial)
                    (set! compiled (cons partial compiled))
-                   (set! compiled (cons '(writeln context) compiled))
                    (set! compiled
                          (cons `(,(string->symbol (format "partial:~a" value))
                                  context out blank-missing-value-handler)
