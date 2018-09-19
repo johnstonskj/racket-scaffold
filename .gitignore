@@ -1,6 +1,7 @@
 *.rkt~
 *.rkt#*
 .#*.rkt
+.*.swp
 compiled/
 /scaffold/doc/
 /coverage/

@@ -77,25 +77,18 @@
   "a list:  one,  two,  three, and that's all"))
 
 (test-case
- "expand-string: success with # conditional list of symbols"
- (check-equal?
-  (expand-string "a list: {{#items}} {{_}}, {{/items}}and that's all"
-                 (hash "items" '(a b c)))
-  "a list:  a,  b,  c, and that's all"))
-
-(test-case
  "expand-string: success with # conditional hash with hash"
  (check-equal?
   (expand-string "a hash: {{#item}}{{name}}{{/item}} and that's all"
                  (hash "item" (hash "name" "simon")))
   "a hash: simon and that's all"))
 
-(test-case
- "expand-string: success with # conditional hash only"
- (check-equal?
-  (expand-string "a hash: {{#item}}{{name}}{{/item}} and that's all"
-                 (hash "item" "yes" "name" "simon"))
-  "a hash: simon and that's all"))
+;(test-case
+; "expand-string: success with # conditional hash only"
+; (check-equal?
+;  (expand-string "a hash: {{#item}}{{name}}{{/item}} and that's all"
+;                 (hash "item" "yes" "name" "simon"))
+;  "a hash: simon and that's all"))
 
 (test-case
  "expand-string: success with # conditional hash only, no pattern"
@@ -110,6 +103,55 @@
   (expand-string "a hash: {{#item}}OK{{/item}} so that's a {{item}}{{^item}}no{{/item}}."
                  (hash "item" "yes"))
   "a hash: OK so that's a yes."))
+
+(test-case
+ "expand-string: success with # conditional hash only, trailing pattern"
+ (check-equal?
+  (expand-string "a hash: {{#item}}OK{{/item}} so that's a {{item}}{{^item}}no{{/item}}."
+                 (hash "item" "yes"))
+  "a hash: OK so that's a yes."))
+
+(test-case
+ "expand-string: success with partial"
+ (partial-path (path->string (collection-file-path "test" "scaffold")))
+ (check-equal?
+  (expand-string "{{>salutation}}    Welcome!"
+                 (hash "salutation" (hash "text" "Hola"
+                                          "title" "Sr"
+                                          "sep" ".")
+                       "name" "Juan"))
+  "Hola Sr. Juan,\n    Welcome!"))
+
+
+;; tests for compile-string
+
+(test-case
+ "compile-string: success with simple string"
+ (define compiled-template (compile-string "dummy string"))
+ (check-true (procedure? compiled-template))
+ (check-true (void? (compiled-template (hash) (open-output-string)))))
+
+(test-case
+ "compile-string: success with simple string"
+ (define compiled-template (compile-string "hello {{name}}!"))
+ (check-true (procedure? compiled-template))
+ (define output (open-output-string))
+ (compiled-template (hash "name" "simon") output)
+ (check-equal?
+  (get-output-string output)
+  "hello simon!"))
+
+;; tests for load-partial
+
+(test-case
+ "load-partial: cannot find file, incorrect name"
+ (partial-path (path->string (collection-file-path "test" "scaffold")))
+ (check-false (load-partial "unknown")))
+
+(test-case
+ "load-partial: cannot find file, incorrect path"
+ (partial-path (path->string (collection-file-path "unknown" "scaffold")))
+ (check-false (load-partial "salutation")))
 
 ;; ---------- Test Cases - Errors
 
@@ -128,6 +170,14 @@
    (λ ()
      (expand-string "hello {{/unsupported}} :)" (hash "name" "simon")))))
 
+(test-case
+ "expand-string: failure with # conditional list of symbols"
+ (check-exn
+   exn:fail?
+   (λ ()
+     (expand-string "a list: {{#items}} {{_}}, {{/items}}and that's all"
+                    (hash "items" '(a b c))))))
+
 ;; ---------- Test Cases - Unsupported
 
 (test-case
@@ -136,13 +186,6 @@
    exn:fail?
    (λ ()
      (expand-string "hello {{../name}} :)" (hash "name" "simon")))))
-
-(test-case
- "expand-string: unsupported partials"
-  (check-exn
-   exn:fail?
-   (λ ()
-     (expand-string "hello {{> unsupported}} :)" (hash "name" "simon")))))
 
 (test-case
  "expand-string: unsupported set delimiter"

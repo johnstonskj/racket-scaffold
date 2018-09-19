@@ -50,6 +50,7 @@
          racket/port
          racket/string
          scaffold/expand
+         scaffold/introspect
          scaffold/system)
 
 ;; ---------- Internal Configuration
@@ -160,6 +161,7 @@
                      (hash-set arguments "file-name" "scribblings.scrbl")
                      "scribblings"
                      #t)
+  (define scribble-this (introspect-this arguments))
   (expand-plank-file "scribble-module.scrbl"
                      (hash-set arguments "file-ext" "scrbl")
                      "scribblings"))
@@ -212,6 +214,22 @@
                          (number->string (date-year (current-date)))))))
 
 ;; ---------- Internal procedures
+
+(define (introspect-this arguments)
+  (if (hash-has-key? arguments "scribble-this")
+      (let ([mod (introspect-module (string->symbol (hash-ref arguments "scribble-this")))])
+        (for/list ([export (module-info-exports mod)])
+          (define content
+            (cond
+              [(export-info-procedure? export)
+               (hash "form" "defproc")]
+              [(string-prefix? (export-info-name export) "struct:")
+               (hash "form" "defstruct")]
+              [else
+               (hash "form" "defthing")]
+               ))
+          (hash-set content "name" (export-info-name export))))
+      '()))
 
 (define (string-or . strings)
   (findf non-empty-string? strings))

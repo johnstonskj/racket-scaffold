@@ -12,10 +12,7 @@
  (contract-out
   
   [introspect-module
-   (-> symbol? module-info?)]
-
-  [display-module
-   (->* (module-info?) (output-port?) void?)])
+   (-> symbol? (or/c module-info? #f))])
 
  (except-out
   (struct-out module-info)
@@ -83,7 +80,9 @@
   (define name (first export))
   (define thing (with-handlers ([exn? (λ (e) name)])
                   (eval name namespace)))
-  (define ns:thing (syntax-shift-phase-level (namespace-symbol->identifier name) 1))
+  (define ns:thing (namespace-symbol->identifier name))
+  (define value (with-handlers ([exn? (λ (e) (void))])
+                  (namespace-variable-value name)))
   (export-info
    name
    level
@@ -99,7 +98,7 @@
         #f)
    (if (procedure? thing) (procedure-result-arity thing) #f)
    (value-contract thing)
-   (if (variable-reference? ns:thing) (namespace-variable-value name) #f)
+   value
    (second export)))
 
 (define (display-exports exports out)
@@ -129,8 +128,8 @@
       (display (format ", declared in ~a" (export-info-exported-from export)) out))
     (newline out)))
 
-(display-module (introspect-module 'scaffold/planks))
+;(display-module (introspect-module 'scaffold/planks))
 
-;(introspect-module 'rackunit)
+;(display-module (introspect-module 'rackunit))
 
 ;(display-module (introspect-module 'rml/data))
