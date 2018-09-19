@@ -49,7 +49,7 @@
          racket/path
          racket/port
          racket/string
-         scaffold/expand
+         dali
          scaffold/introspect
          scaffold/system)
 
