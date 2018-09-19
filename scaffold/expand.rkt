@@ -131,7 +131,7 @@
                                         blank-missing-value-handler)))
   (define this-namespace (namespace-anchor->namespace anchor))
   (log-debug str)
-  (log-debug compiled)
+  (log-debug (~s compiled))
   (match wrapper
     ['top-level
      `(λ (context out [missing-value-handler blank-missing-value-handler])
@@ -224,7 +224,7 @@
                                        [(hash? new-context)
                                         ;; process once for the hash
                                         (nested new-context)]
-                                       [(string? new-context)
+                                       [(or (string? new-context) (boolean? new-context) (number? new-context))
                                         ;; process once with this string
                                         (nested (hash ,value new-context "_" new-context))]
                                        [else

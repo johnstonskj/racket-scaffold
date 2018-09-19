@@ -144,7 +144,7 @@
                                      (set-argument "package-structure" "single")]
             #:once-each
             [("--single-scribble") "Create a single-page Scribble doc"
-                                   (set-argument "scribble-structure" "'()")]
+                                   (set-argument "scribble-structure" "()")]
             #:once-any
             [("-u" "--user") user "User name"
                              (set-argument "user-id" user)]

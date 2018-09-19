@@ -1,6 +1,6 @@
 #lang info
 ;;
-;; Package {{content-name}}.
+;; Package {{package-name}}.
 ;;   {{content-description}}
 ;;
 ;; Copyright (c) {{year}} {{user-name}} ({{user-email}}).
@@ -10,7 +10,7 @@
 (define version "{{package-version}}")
 (define pkg-authors '({{user-name}}))
 
-(define scribblings '(("scribblings/{{name}}.scrbl" {{scribble-structure}})))
+(define scribblings '(("scribblings/scribblings.scrbl" {{scribble-structure}})))
 
 (define deps '(
   "base"

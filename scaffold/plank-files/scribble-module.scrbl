@@ -1,3 +1,21 @@
+#lang scribble/manual
+
+@(require racket/sandbox
+          scribble/core
+          scribble/eval
+          {{content-name}}
+          (for-label racket/base
+                     racket/contract
+                     {{content-name}}))
+
+@;{============================================================================}
+
+@(define example-eval (make-base-eval
+                      '(require racket/string
+                                {{content-name}})))
+
+@;{============================================================================}
+
 @section[]{Module {{content-name}}.}
 @defmodule[{{content-name}}]
 

@@ -118,7 +118,7 @@
     (if flat
         (expand-info "single-package" arguments)
         (expand-info "collection" (hash-set arguments "content-name" collection)))
-    (expand-module (hash-set arguments "content-name" collection) #t)
+    (expand-module (hash-set arguments "content-name" collection))
     (expand-plank-file "test-doc-complete.rkt"
                           (hash-set arguments "file-name" "test-doc-complete.rkt")
                           "test"))
@@ -140,17 +140,22 @@
   (cond
     [(hash-ref arguments "package-include-private")
      (define requires (format " \"private/~a.rkt\"" (hash-ref arguments "content-name")))
-     (expand-plank-file "module.rkt" (hash-set arguments "module-requires" requires))
+     (expand-plank-file "module.rkt" (hash-set arguments
+                                               "file-name" "main.rkt"
+                                               "module-requires" requires))
      (expand-plank-file "module.rkt" (hash-set arguments "private-module" #t) "private")]
-    [else (expand-plank-file "module.rkt" arguments)])
-  (expand-test-module arguments)
+    [else
+     (expand-plank-file "module.rkt" (hash-set arguments
+                                               "file-name" "main.rkt"))])
+  (expand-test-module (hash-set arguments "module-requires" "\"../main.rkt\""))
   (expand-scribblings arguments))
 
 
 (define (expand-test-module arguments)
   (log-info "expand-test-module")
   (expand-plank-file "test-module.rkt"
-                     (hash-set arguments "file-ext" "rkt")
+                     (hash-set arguments
+                               "file-ext" "rkt")
                      "test"))
 
 

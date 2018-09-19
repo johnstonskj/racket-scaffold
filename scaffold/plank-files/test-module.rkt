@@ -9,7 +9,7 @@
 
 (require rackunit
          ; ---------
-         "../{{content-name}}.rkt")
+         {{module-requires}})
 
 ;; ---------- Test Fixtures
 
