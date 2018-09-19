@@ -51,7 +51,7 @@
 ;; This has to be at the top-level of the module.
 (define-namespace-anchor anchor)
 
-(define partial-path (make-parameter '()))
+(define partial-path (make-parameter '(".")))
 
 (define partial-cache (make-parameter (hash)))
 
