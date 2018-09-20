@@ -1,18 +1,7 @@
 #lang scribble/manual
 
-@(require racket/sandbox
-          scribble/core
-          scribble/eval
-          {{content-name}}
-          (for-label racket/base
-                     racket/contract
-                     {{content-name}}))
-
-@;{============================================================================}
-
-@(define example-eval (make-base-eval
-                      '(require racket/string
-                                {{content-name}})))
+@(require scribble/core
+          scribble/eval)
 
 @;{============================================================================}
 
@@ -23,4 +12,4 @@
 
 @table-of-contents[]
 
-@include-section["{{content-name}}.scrbl"]
+@include-section["{{content-doc-name}}"]

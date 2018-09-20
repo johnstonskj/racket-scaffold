@@ -10,7 +10,8 @@
 (define version "{{package-version}}")
 (define pkg-authors '({{user-name}}))
 
-(define scribblings '(("scribblings/scribblings.scrbl" {{scribble-structure}})))
+(define scribblings '(("scribblings/{{package-name}}.scrbl" {{scribble-structure}})))
+(define test-omit-paths '("scribblings"))
 
 (define deps '(
   "base"

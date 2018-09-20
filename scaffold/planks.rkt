@@ -44,6 +44,7 @@
 
 (require racket/date
          racket/function
+         racket/list
          racket/logging
          racket/match
          racket/path
@@ -53,13 +54,17 @@
          scaffold/introspect
          scaffold/system)
 
-;; ---------- Internal Configuration
+;; ---------- Configuration
 
 (define readme-types (hash "markdown" "md" "text" "txt"))
 
 (define license-types '("Apache-2.0" "BSD" "GPL-3" "LGPL-2.1" "MIT"))
 
 (define package-types '("single" "multi" "triple"))
+
+(define test-dir-name "tests")
+
+(define scribble-dir-name "scribblings")
 
 ;; ---------- Implementation
 
@@ -94,13 +99,25 @@
       (let ([plank-name (format "LICENSE-~a" (hash-ref arguments "package-license"))])
         (expand-plank-file plank-name
                            (hash-set arguments "file-name" "LICENSE")))
-      (when (hash-ref arguments "package-include-travis")
-        (expand-plank-file "dot-travis.yml"
-                           (hash-set arguments "file-name" ".travis.yml"))
-        (expand-plank-file "Makefile"
-                           (hash-set arguments "file-name" "Makefile")))
       (define collection-name (string-or (hash-ref arguments "collection-name")
                                          (hash-ref arguments "content-name")))
+      (when (hash-ref arguments "package-include-travis")
+        (let ([test-dir (if (equal? form "single")
+                            (format "./~a" test-dir-name)
+                            (format "~a/~a" collection-name test-dir-name))]
+              [scribble-dir (if (equal? form "single")
+                                (format "./~a" scribble-dir-name)
+                                (format "~a/~a" collection-name scribble-dir-name))])
+          (expand-plank-file "dot-travis.yml"
+                             (hash-set* arguments
+                                        "file-name" ".travis.yml"
+                                        "test-dir" test-dir
+                                        "scribble-dir" scribble-dir))
+          (expand-plank-file "Makefile"
+                             (hash-set* arguments
+                                        "file-name" "Makefile"
+                                        "test-dir" test-dir
+                                        "scribble-dir" scribble-dir))))
       (expand-collection (hash-set arguments "collection-name" collection-name)
                          (equal? form "single")))))
   
@@ -121,7 +138,7 @@
     (expand-module (hash-set arguments "content-name" collection))
     (expand-plank-file "test-doc-complete.rkt"
                           (hash-set arguments "file-name" "test-doc-complete.rkt")
-                          "test"))
+                          test-dir-name))
   
   (cond
     [(and (not flat) (directory-exists? collection))
@@ -156,20 +173,40 @@
   (expand-plank-file "test-module.rkt"
                      (hash-set arguments
                                "file-ext" "rkt")
-                     "test"))
+                     test-dir-name))
 
 
 (define (expand-scribblings arguments)
   (log-info "expand-scribblings")
-  ;; use 'scribble-this' to introspect existng module
+  (define top-doc-name
+    (format "~a.scrbl"
+            (cond
+              [(non-empty-string? (hash-ref arguments "package-name" ""))
+               (hash-ref arguments "package-name")]
+              [(non-empty-string? (hash-ref arguments "collection-name" ""))
+               (hash-ref arguments "collection-name")]
+              [else
+               (hash-ref arguments "content-name")])))
+  (define content-doc-name
+    (format "~a.scrbl"
+            (cond
+              [(equal? (hash-ref arguments "content-name") (first (string-split top-doc-name ".")))
+               (format "_~a" (hash-ref arguments "content-name"))]
+              [else
+               (hash-ref arguments "content-name")])))
+  ;; TODO: name for package
   (expand-plank-file "scribble-top.scrbl"
-                     (hash-set arguments "file-name" "scribblings.scrbl")
-                     "scribblings"
+                     (hash-set* arguments
+                                "file-name" top-doc-name
+                                "content-doc-name" content-doc-name)
+                     scribble-dir-name
                      #t)
   (define scribble-this (introspect-this arguments))
+  ;; TODO: name for module
   (expand-plank-file "scribble-module.scrbl"
-                     (hash-set arguments "file-ext" "scrbl")
-                     "scribblings"))
+                     (hash-set arguments
+                               "file-name" content-doc-name)
+                     scribble-dir-name))
 
 
 (define (expand-a-plank arguments)

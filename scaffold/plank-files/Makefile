@@ -1,7 +1,7 @@
 PACKAGENAME={{content-name}}
 COLLECTS={{content-name}}
-TESTS=$(COLLECTS)/test
-SCRBL=$(COLLECTS)/scribblings/$(PACKAGENAME).scrbl
+TESTS={{test-dir}}
+SCRBL={{scribble-dir}}/$(PACKAGENAME).scrbl
 
 all: setup test
 
