@@ -1,6 +1,5 @@
-PACKAGENAME={{content-name}}
-COLLECTS={{content-name}}
-TESTS={{test-dir}}
+PACKAGENAME={{package-name}}
+COLLECTS={{collection-name}}
 SCRBL={{scribble-dir}}/$(PACKAGENAME).scrbl
 
 all: setup test
@@ -20,10 +19,14 @@ unlink:
 	raco pkg remove $(PACKAGENAME)
 
 test:
-	raco test $(TESTS)
+	raco test -t -c $(COLLECTS)
 
 coverage:
 	raco cover -b -f coveralls -p $(PACKAGENAME)
+
+readme: README.md
+	markdown -r markdown_github -w html5 -o ./doc/readme.html \
+		--standalone --self-contained README.md
 
 htmldocs: $(SCRBL)
 	raco scribble \

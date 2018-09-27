@@ -11,7 +11,7 @@
 (define pkg-authors '({{user-name}}))
 
 (define scribblings '(("scribblings/{{package-name}}.scrbl" {{scribble-structure}})))
-(define test-omit-paths '("scribblings"))
+(define test-omit-paths '("scribblings" "private"))
 
 (define deps '(
   "base"

@@ -9,7 +9,7 @@
 
 (require rackunit
          ; ---------
-         {{module-requires}})
+         {{{module-requires}}})
 
 ;; ---------- Test Fixtures
 

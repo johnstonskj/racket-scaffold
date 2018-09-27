@@ -86,6 +86,8 @@
          (make-directory package-dir)
          #t])
     (parameterize ([current-directory package-dir])
+      (define collection-name (string-or (hash-ref arguments "collection-name")
+                                         (hash-ref arguments "content-name")))
       (expand-plank-file "dot-gitignore"
                          (hash-set arguments "file-name" ".gitignore"))
       (let ([file-name (format "README.~a" (string-downcase
@@ -94,13 +96,12 @@
             [heading-underline (make-string (string-length (hash-ref arguments "content-name")) #\=)])
         (expand-plank-file file-name
                            (hash-set* arguments
+                                      "collection-name" collection-name
                                       "file-name" file-name
                                       "heading-underline" heading-underline)))
       (let ([plank-name (format "LICENSE-~a" (hash-ref arguments "package-license"))])
         (expand-plank-file plank-name
                            (hash-set arguments "file-name" "LICENSE")))
-      (define collection-name (string-or (hash-ref arguments "collection-name")
-                                         (hash-ref arguments "content-name")))
       (when (hash-ref arguments "package-include-travis")
         (let ([test-dir (if (equal? form "single")
                             (format "./~a" test-dir-name)
@@ -110,11 +111,13 @@
                                 (format "~a/~a" collection-name scribble-dir-name))])
           (expand-plank-file "dot-travis.yml"
                              (hash-set* arguments
+                                        "collection-name" collection-name
                                         "file-name" ".travis.yml"
                                         "test-dir" test-dir
                                         "scribble-dir" scribble-dir))
           (expand-plank-file "Makefile"
                              (hash-set* arguments
+                                        "collection-name" collection-name
                                         "file-name" "Makefile"
                                         "test-dir" test-dir
                                         "scribble-dir" scribble-dir))))
@@ -157,9 +160,9 @@
   (cond
     [(hash-ref arguments "package-include-private")
      (define requires (format " \"private/~a.rkt\"" (hash-ref arguments "content-name")))
-     (expand-plank-file "module.rkt" (hash-set arguments
-                                               "file-name" "main.rkt"
-                                               "module-requires" requires))
+     (expand-plank-file "module.rkt" (hash-set* arguments
+                                                "file-name" "main.rkt"
+                                                "module-requires" requires))
      (expand-plank-file "module.rkt" (hash-set arguments "private-module" #t) "private")]
     [else
      (expand-plank-file "module.rkt" (hash-set arguments
@@ -244,7 +247,7 @@
                    (cons "package-include-private" #t)
                    (cons "package-include-travis" #t)
                    (cons "package-structure" "multi")
-                   (cons "scribble-structure" "multi-page")
+                   (cons "scribble-structure" "(multi-page)")
                    (cons "user-id"
                          (find-user-id))
                    (cons "user-name"

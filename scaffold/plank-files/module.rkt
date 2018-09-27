@@ -14,7 +14,7 @@
 
 ;; ---------- Requirements
 
-(require{{module-requires}})
+(require{{{module-requires}}})
 
 ;; ---------- Internal types
 
@@ -24,10 +24,12 @@
 
 ;; ---------- Internal tests
 
+{{#private-module}}
 (module+ test
   (require rackunit)
   ;; only use for internal tests, use check- functions 
   (check-true "dummy first test" #f))
+{{/private-module}}
 {{^private-module}}
 (module+ main
   ;; Main entry point, executed when run with the `racket` executable or DrRacket.

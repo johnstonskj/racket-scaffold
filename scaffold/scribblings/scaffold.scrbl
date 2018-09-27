@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require racket/sandbox
+@(require racket/file
+          racket/sandbox
           scribble/core
           scribble/eval
           scaffold/planks
@@ -436,3 +437,7 @@ function.
                (list @smaller{user-name} @racket[string?] ""
                      @smaller{-u, -U})
                (list @smaller{year} @racket[string?] "" ""))]
+
+@section{License}
+
+@verbatim|{|@file->string["../LICENSE"]}|

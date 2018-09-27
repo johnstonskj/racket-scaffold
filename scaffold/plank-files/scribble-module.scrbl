@@ -16,7 +16,7 @@
 
 @;{============================================================================}
 
-@section[]{Module {{content-name}}.}
+@title[]{Module {{content-name}}.}
 @defmodule[{{content-name}}]
 
 {{content-description}}

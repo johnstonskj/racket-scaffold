@@ -1,7 +1,6 @@
 #lang scribble/manual
 
-@(require scribble/core
-          scribble/eval)
+@(require scribble/core)
 
 @;{============================================================================}
 
@@ -13,3 +12,7 @@
 @table-of-contents[]
 
 @include-section["{{content-doc-name}}"]
+
+@section{License}
+
+@verbatim|{|@file->string["../LICENSE"]}|

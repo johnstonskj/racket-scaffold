@@ -6,6 +6,6 @@
 ;; Copyright (c) {{year}} {{user-name}} ({{user-email}}).
 
 (define collection "{{collection-name}}")
-(define scribblings '(("scribblings/scribblings.scrbl" {{scribble-structure}})))
+(define scribblings '(("scribblings/{{package-name}}.scrbl" {{scribble-structure}})))
 
-(define test-omit-paths '("scribblings"))
+(define test-omit-paths '("scribblings" "private"))
