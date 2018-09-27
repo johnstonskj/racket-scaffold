@@ -33,5 +33,4 @@
          (displayln out))
        (check-eq? (string-length out) 0)))))
 
-(module+ main
-  (test-doc-coverage '{{content-name}}))
+(test-doc-coverage '({{content-name}}))
