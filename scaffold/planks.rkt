@@ -20,7 +20,7 @@
    (-> hash? void?)]
   
   [expand-collection
-   (-> hash? boolean? void?)]
+   (->* (hash?) (boolean?) void?)]
   
   [expand-module
    (-> hash? void?)]
@@ -45,14 +45,14 @@
 (require racket/date
          racket/function
          racket/list
-         racket/logging
          racket/match
          racket/path
          racket/port
          racket/string
          dali
          scaffold/introspect
-         scaffold/system)
+         scaffold/private/system
+         scaffold/private/logging)
 
 ;; ---------- Configuration
 
@@ -72,15 +72,15 @@
   (define form (hash-ref arguments "package-structure"))
   (define package-name (hash-ref arguments "package-name"))
   (define package-dir (string-or (hash-ref arguments "package-dir") package-name))
-  (log-info "expand-package: package ~a into ~a" package-name package-dir)
+  (log-scaffold-info "expand-package: package ~a into ~a" package-name package-dir)
   
   (when
       (cond
         [(equal? package-dir "")
-         (log-error "package directory not provided")
+         (log-scaffold-error "package directory not provided")
          #f]
         [(directory-exists? package-dir)
-         (log-error "package directory already exists ~a" package-dir)
+         (log-scaffold-error "package directory already exists ~a" package-dir)
          #f]
         [else
          (make-directory package-dir)
@@ -102,6 +102,9 @@
       (let ([plank-name (format "LICENSE-~a" (hash-ref arguments "package-license"))])
         (expand-plank-file plank-name
                            (hash-set arguments "file-name" "LICENSE")))
+      ;; TODO: top-level info file!
+      (when (equal? form "single")
+         (expand-info "multi-package" arguments))
       (when (hash-ref arguments "package-include-travis")
         (let ([test-dir (if (equal? form "single")
                             (format "./~a" test-dir-name)
@@ -125,15 +128,14 @@
                          (equal? form "single")))))
   
 (define (expand-info type arguments)
-  (log-info "expand-info: ~a" type)
+  (log-scaffold-info "expand-info: ~a" type)
   (expand-plank-file (format "info-~a.rkt" type)
                      (hash-set* arguments "file-name" "info.rkt")))
 
 
 (define (expand-collection arguments [flat #f])
   (define collection (hash-ref arguments "collection-name"))
-  (log-info "expand-collection ~a" collection)
-  
+  (log-scaffold-info "expand-collection ~a" collection)
   (define (expander)
     (if flat
         (expand-info "single-package" arguments)
@@ -145,18 +147,18 @@
   
   (cond
     [(and (not flat) (directory-exists? collection))
-      (log-error "cannot overwrite existing collection ~a" collection)]
+      (log-scaffold-error "cannot overwrite existing collection ~a" collection)]
     [(not flat)
      (make-directory collection)
      (parameterize ([current-directory collection])
        (expander))]
     [flat
      (expander)]
-    [else (log-error "invalid state in expand-collection")]))     
+    [else (log-scaffold-error "invalid state in expand-collection")]))     
 
 
 (define (expand-module arguments)
-  (log-info "expand-module")
+  (log-scaffold-info "expand-module")
   (cond
     [(hash-ref arguments "package-include-private")
      (define requires (format " \"private/~a.rkt\"" (hash-ref arguments "content-name")))
@@ -172,7 +174,7 @@
 
 
 (define (expand-test-module arguments)
-  (log-info "expand-test-module")
+  (log-scaffold-info "expand-test-module")
   (expand-plank-file "test-module.rkt"
                      (hash-set arguments
                                "file-ext" "rkt")
@@ -180,7 +182,7 @@
 
 
 (define (expand-scribblings arguments)
-  (log-info "expand-scribblings")
+  (log-scaffold-info "expand-scribblings")
   (define top-doc-name
     (format "~a.scrbl"
             (cond
@@ -214,19 +216,19 @@
 
 (define (expand-a-plank arguments)
   (define file-name (find-plank-file (hash-ref arguments "content-name")))
-  (log-info "expand-a-plank: ~s" file-name)
+  (log-scaffold-info "expand-a-plank: ~s" file-name)
   (if file-name
       (call-with-input-file* file-name
         (λ (in)
           (displayln (expand-string (port->string in) arguments blank-missing-value-handler))))
-      (log-warning "No content found for '~a'" (hash-ref arguments "content-name"))))
+      (log-scaffold-warning "No content found for '~a'" (hash-ref arguments "content-name"))))
 
 
 (define (list-planks)
   (define package-path (collection-file-path "plank-files/" "scaffold"))
   (define local-path (expand-user-path "~/planks"))
-  (log-info "list-planks: package dir: ~a" (path->string package-path))
-  (log-info "list-planks: local dir: ~a" (path->string local-path))
+  (log-scaffold-info "list-planks: package dir: ~a" (path->string package-path))
+  (log-scaffold-info "list-planks: local dir: ~a" (path->string local-path))
   (map
    (λ (f) (string-replace (path->string f) #rx"\\.plank$" ""))
    (append
@@ -293,16 +295,16 @@
       (hash-ref arguments "content-name")))
 
 (define (expand-plank-file file-name arguments [output-dir "."] [ignore-existing #f])
-  (log-info "expand-plank-file: plank ~a" file-name)
-  (log-debug "expand-plank-file: output-dir ~a -> ~a" (current-directory) output-dir)
+  (log-scaffold-info "expand-plank-file: plank ~a" file-name)
+  (log-scaffold-debug "expand-plank-file: output-dir ~a -> ~a" (current-directory) output-dir)
   (unless (directory-exists? output-dir)
     (make-directory output-dir))
   (define output-file (format "~a/~a"
                               output-dir
                               (output-file-name file-name arguments)))
-  (log-info "expand-plank-file: output-file ~a" output-file)
+  (log-scaffold-info "expand-plank-file: output-file ~a" output-file)
   (if (file-exists? output-file)
-      (unless ignore-existing (log-error "cannot overwrite existing file ~a" output-file))
+      (unless ignore-existing (log-scaffold-error "cannot overwrite existing file ~a" output-file))
       (expand-file (plank-file-path file-name)
                    output-file
                    arguments)))

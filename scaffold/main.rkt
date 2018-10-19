@@ -9,7 +9,6 @@
 
 (require racket/cmdline
          racket/list
-         racket/logging
          racket/match
          racket/port
          racket/string
@@ -20,6 +19,7 @@
          planet/private/command
          ; Here is the internal API
          scaffold/planks
+         scaffold/private/logging
          )
 
 ;; ---------- Internal parameters
@@ -36,9 +36,9 @@
 
 ;; ---------- Implementation
 
-(define (show-config)
-  (for ([key (sort (hash-keys argument-hash) string<?)])
-    (displayln (format "  ~a: ~s" key (hash-ref argument-hash key)))
+(define (show-config [args argument-hash])
+  (for ([key (sort (hash-keys args) string<?)])
+    (displayln (format "  ~a: ~s" key (hash-ref args key)))
     (match key
       ["package-license"
        (displayln (format "    one of: ~a" (string-join license-types ", ")))]
@@ -58,24 +58,33 @@
   (with-logging-to-port
       (current-output-port)
     (λ ()
-      (when (log-level? (current-logger) 'debug)
-        (show-config))
-      (log-debug "expand-content: log level set to ~a" (tool-log-level))
+      (log-scaffold-debug "expand-content: log level set to ~a" (scaffold-log-level))
       (validate-arguments)
       (define content-type (current-svn-style-command))
       (set-argument "content-type" content-type)
-      (if (equal? (current-svn-style-command) "package")
-          (set-argument "package-name" name)
-          (set-argument "package-name" (or (find-package-name) "")))
       (set-argument "content-name" name)
-      (log-info "expand-content: expecting to expand ~a ~a" content-type name)
+      (log-scaffold-info "expand-content: expecting to expand ~a ~a" content-type name)
       (define fixed-args (make-immutable-hash (hash->list argument-hash)))
+      (when (log-level? (current-logger) 'debug)
+        (show-config fixed-args))
       (match content-type
-        ["package" (expand-package fixed-args)]
-        ["collection" (expand-collection fixed-args)]
-        ["module" (expand-module fixed-args)]
-        ["testmodule" (expand-test-module fixed-args)]
-        ["scribble" (expand-scribblings fixed-args)]
+        ["package"
+         (expand-package (hash-set fixed-args "package-name" name))]
+        ["collection"
+         (expand-collection (hash-set* fixed-args
+                                       "package-name" (or (find-package-name) "")
+                                       "collection-name" name))]
+        ["module"
+         (expand-module (hash-set* fixed-args
+                                   "package-name" (or (find-package-name) "")
+                                   "module-name" name))]
+        ["testmodule"
+         (set-argument "package-name" (or (find-package-name) ""))
+         (expand-test-module (hash-set* fixed-args
+                                        "package-name" (or (find-package-name) "")))]
+        ["scribble"
+         (expand-scribblings (hash-set* fixed-args
+                                        "package-name" (or (find-package-name) "")))]
         ["plank"
          (cond
            [(hash-ref fixed-args "list-planks" #f)
@@ -83,16 +92,14 @@
            [(> (length name) 0)
             (for ([plank-file name])
               (expand-a-plank (hash-set fixed-args "content-name" plank-file)))]
-           [else (log-warning "no plank names specified, nothing to do.")])]
-        [else (log-error "unexpected content type ~a" content-type)]))
-    (tool-log-level)))
+           [else (log-scaffold-warning "no plank names specified, nothing to do.")])]
+        [else (log-scaffold-error "unexpected content type ~a" content-type)]))
+    (scaffold-log-level)))
 
 ;; ---------- Internal procedures
 
-(define tool-log-level (make-parameter 'warning))
-
 (define (find-package-name)
-  (log-info "find-package-name: looking for a directory that holds a package...")
+  (log-scaffold-info "find-package-name: looking for a directory that holds a package...")
   (define go-back (current-directory))
   (define current-path (reverse (map path->string (explode-path go-back))))
   (define package-name (for/or ([dir-name current-path])
@@ -100,14 +107,14 @@
                              (let* ([info (get-info/full (current-directory))])
                                (if (and info (info 'pkg-desc (λ () #f)))
                                    (begin
-                                     (log-info
+                                     (log-scaffold-info
                                       "find-package-name: found info.rkt for package in dir ~a"
                                       dir-name)
                                      dir-name)
                                    (begin (current-directory "..") #f)))
                              (begin (current-directory "..") #f))))
   (current-directory go-back)
-  (log-info "find-package-name: found package named ~a" package-name)
+  (log-scaffold-info "find-package-name: found package named ~a" package-name)
   package-name)
 
 (svn-style-command-line
@@ -118,12 +125,18 @@
  ["package" "create a new, complete, package."
             "\nCreate a Racket package in the current directory."
             #:once-each
-            [("-d" "--description") value "Short description"
-                                    (set-argument "content-description" value)]
-            [("-V" "--version") value "Version string"
-                                (set-argument "package-version" value)]
-            [("-l" "--license") value "License type to create"
-                                (set-argument "package-license" value)]
+            [("-d" "--description")
+             value
+             "Short description"
+             (set-argument "content-description" value)]
+            [("-V" "--version")
+             value
+             "Version string"
+             (set-argument "package-version" value)]
+            [("-l" "--license")
+             value
+             "License type to create"
+             (set-argument "package-license" value)]
             [("-r" "--readme") value "Read-me file type to create"
                                (set-argument "package-readme" value)]
 
@@ -157,9 +170,9 @@
                                      (set-argument "user-email" email)]
             #:once-each
             [("-v" "--verbose") "Verbose mode"
-                                (tool-log-level 'info)]
+                                (scaffold-log-level 'info)]
             [("--very-verbose") "Very verbose mode"
-                                (tool-log-level 'debug)]
+                                (scaffold-log-level 'debug)]
             #:args (package-name)
             (expand-content package-name)]
      
@@ -184,9 +197,9 @@
                                         (set-argument "user-email" email)]
                #:once-each
                [("-v" "--verbose") "Verbose mode"
-                                   (tool-log-level 'info)]
+                                   (scaffold-log-level 'info)]
                [("--very-verbose") "Very verbose mode"
-                                   (tool-log-level 'debug)]
+                                   (scaffold-log-level 'debug)]
                #:args (collection-name)
                (expand-content collection-name)]
      
@@ -209,9 +222,9 @@
                                     (set-argument "user-email" email)]
            #:once-each
            [("-v" "--verbose") "Verbose mode"
-                   (tool-log-level 'info)]
+                   (scaffold-log-level 'info)]
            [("--very-verbose") "Very verbose mode"
-                   (tool-log-level 'debug)]
+                   (scaffold-log-level 'debug)]
            #:args (module-name)
            (expand-content module-name)]
      
@@ -234,9 +247,9 @@
                                         (set-argument "user-email" email)]
                #:once-each
                [("-v" "--verbose") "Verbose mode"
-                                   (tool-log-level 'info)]
+                                   (scaffold-log-level 'info)]
                [("--very-verbose") "Very verbose mode"
-                                   (tool-log-level 'debug)]
+                                   (scaffold-log-level 'debug)]
                #:args (test-module-name)
                (expand-content test-module-name)]
 
@@ -260,9 +273,9 @@
                                         (set-argument "user-email" email)]
                #:once-each
                [("-v" "--verbose") "Verbose mode"
-                                   (tool-log-level 'info)]
+                                   (scaffold-log-level 'info)]
                [("--very-verbose") "Very verbose mode"
-                                   (tool-log-level 'debug)]
+                                   (scaffold-log-level 'debug)]
                #:args (module-name)
                (expand-content module-name)]
 
@@ -276,9 +289,9 @@
                                  (add-argument key-value)]
            #:once-each
            [("-v" "--verbose") "Verbose mode"
-                   (tool-log-level 'info)]
+                   (scaffold-log-level 'info)]
            [("--very-verbose") "Very verbose mode"
-                   (tool-log-level 'debug)]
+                   (scaffold-log-level 'debug)]
            #:args plank-name
            (expand-content plank-name)]
 

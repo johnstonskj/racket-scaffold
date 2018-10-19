@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require scribble/core)
+@(require racket/file scribble/core)
 
 @;{============================================================================}
 
